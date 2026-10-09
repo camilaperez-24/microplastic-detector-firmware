@@ -1,0 +1,70 @@
+# ============================================================
+# .gitignore — Microplastic Detector Firmware
+# ============================================================
+# Archivos y carpetas que Git debe IGNORAR por completo.
+# No se versionan, no se suben a GitHub.
+# ============================================================
+
+# ---------- Python ----------
+# Caché de bytecode generado automáticamente al ejecutar
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos virtuales (los crea cada quien en su PC)
+venv/
+.venv/
+env/
+.env/
+
+# Archivos de instalación / build
+*.egg-info/
+dist/
+build/
+
+# ---------- Testing ----------
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ---------- Editores ----------
+# VS Code: configuración personal por usuario
+.vscode/
+# PyCharm / IntelliJ
+.idea/
+# Vim
+*.swp
+*.swo
+
+# ---------- Sistema operativo ----------
+# Windows
+Thumbs.db
+Desktop.ini
+# macOS
+.DS_Store
+# Linux
+*~
+
+# ---------- Datos crudos de las mediciones ----------
+# El código fuente NO lleva datos experimentales.
+# Los CSVs de las mediciones se guardan localmente,
+# se respaldan por otro medio (Drive, disco externo).
+data/*.csv
+data/*.json
+data/raw/
+data/exports/
+
+# Mantener la carpeta data/ visible aunque esté vacía:
+!data/.gitkeep
+
+# ---------- MicroPython ----------
+# Firmware compilado / cross-compiled
+*.mpy
+
+# ---------- Credenciales ----------
+# NUNCA subir credenciales de WiFi, tokens, contraseñas
+secrets.py
+credentials.json
+*.pem
+*.key
