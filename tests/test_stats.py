@@ -230,3 +230,110 @@ class TestSummarizeRepetitions:
         """Lista vacía: n_reps = 0, no debe fallar."""
         result = stats.summarize_repetitions([])
         assert result["n_reps"] == 0
+
+        
+
+# ============================================================
+# TESTS AGREGADOS EN v0.2.0
+# Saturación del sensor, error estándar (sem) y calidad global
+# ============================================================
+
+class TestSaturacionSensor:
+    """La saturación ahora se cuenta con el umbral del OPT101, no con 4095."""
+
+    def test_umbral_efectivo_es_el_del_sensor(self):
+        """El sensor satura antes que el ADC, así que manda el sensor."""
+        assert config.SATURATION_THRESHOLD == config.SENSOR_SATURATION_COUNTS
+        assert config.SATURATION_THRESHOLD < config.ADC_SATURATION_VALUE
+
+    def test_cuenta_muestras_sobre_el_umbral_del_sensor(self):
+        """3050 y 3128 están saturadas; 3000 y 3049 no."""
+        data = [100, 3000, 3049, 3050, 3128]
+        result = stats.welford_block(data)
+        assert result["n_sat"] == 2
+
+    def test_bloque_pegado_al_techo_del_opt101_es_saturado(self):
+        """Un bloque clavado en ~2.52 V (3128 cuentas) debe marcarse SATURADO,
+        aunque nunca llegue a 4095."""
+        light = stats.welford_block([3128] * 1000)
+        dark = stats.welford_block([24] * 1000)
+        assert stats.quality_flag(light, dark) == config.QUALITY_SATURATED
+
+
+class TestErrorEstandar:
+    """El error estándar de la media (sem) = sigma / sqrt(n)."""
+
+    def test_sem_caso_tipico(self):
+        """Para [1..5]: sigma = 1.5811, n = 5 → sem = 0.7071."""
+        result = stats.welford_block([1, 2, 3, 4, 5])
+        assert result["sem"] == pytest.approx(1.5811388 / math.sqrt(5), abs=1e-6)
+
+    def test_sem_mucho_menor_que_sigma_con_n_grande(self):
+        """Con N = 1000, sem debe ser ~31.6 veces menor que sigma."""
+        random.seed(7)
+        data = [random.gauss(1640, 17.5) for _ in range(1000)]
+        result = stats.welford_block(data)
+        assert result["sem"] == pytest.approx(result["sigma"] / math.sqrt(1000))
+        assert result["sigma"] / result["sem"] == pytest.approx(31.62, abs=0.01)
+
+    def test_sem_un_elemento_y_vacio(self):
+        """Con 0 o 1 muestra, sem es 0 por convención."""
+        assert stats.welford_block([42])["sem"] == 0.0
+        assert stats.welford_block([])["sem"] == 0.0
+
+
+class TestDeltaVFromBlocks:
+    """delta_v_from_blocks() calcula dV, sigma_dV y sem_dV desde dos bloques."""
+
+    def _bloques(self):
+        light = {"n": 1000, "mu": 1641.8, "sigma": 17.6, "sem": 17.6 / math.sqrt(1000),
+                 "n_sat": 0, "min_val": 1590, "max_val": 1678}
+        dark = {"n": 1000, "mu": 23.6, "sigma": 3.7, "sem": 3.7 / math.sqrt(1000),
+                "n_sat": 0, "min_val": 6, "max_val": 39}
+        return light, dark
+
+    def test_valores(self):
+        light, dark = self._bloques()
+        r = stats.delta_v_from_blocks(light, dark)
+        assert r["dV"] == pytest.approx(1641.8 - 23.6)
+        assert r["sigma_dV"] == pytest.approx(math.sqrt(17.6 ** 2 + 3.7 ** 2))
+        assert r["sem_dV"] == pytest.approx(math.sqrt(17.6 ** 2 + 3.7 ** 2) / math.sqrt(1000))
+
+    def test_coincide_con_delta_v(self):
+        """dV y sigma_dV deben ser idénticos a los de delta_v()."""
+        light, dark = self._bloques()
+        r1 = stats.delta_v_from_blocks(light, dark)
+        r2 = stats.delta_v(light["mu"], light["sigma"], dark["mu"], dark["sigma"])
+        assert r1["dV"] == r2["dV"]
+        assert r1["sigma_dV"] == r2["sigma_dV"]
+
+
+class TestCombineQuality:
+    """combine_quality() toma el peor estado de varias repeticiones."""
+
+    def test_todas_ok(self):
+        assert stats.combine_quality(["OK"] * 10) == config.QUALITY_OK
+
+    def test_una_ruidosa(self):
+        flags = ["OK"] * 9 + [config.QUALITY_HIGH_NOISE]
+        assert stats.combine_quality(flags) == config.QUALITY_HIGH_NOISE
+
+    def test_saturado_gana_a_ruido(self):
+        flags = ["OK", config.QUALITY_HIGH_NOISE, config.QUALITY_SATURATED]
+        assert stats.combine_quality(flags) == config.QUALITY_SATURATED
+
+    def test_error_gana_a_todo(self):
+        flags = [config.QUALITY_SATURATED, "ERROR:adc", "OK"]
+        assert stats.combine_quality(flags) == "ERROR:adc"
+
+    def test_lista_vacia(self):
+        assert stats.combine_quality([]).startswith(config.QUALITY_ERROR_PREFIX)
+
+
+class TestSummarizeSem:
+    """summarize_repetitions() ahora incluye sem_dV."""
+
+    def test_sem_entre_repeticiones(self):
+        dvs = [1601.0, 1602.0, 1600.5, 1601.5, 1601.0]
+        r = stats.summarize_repetitions(dvs)
+        assert r["sem_dV"] == pytest.approx(r["sigma_dV"] / math.sqrt(5))

@@ -17,9 +17,10 @@ Proyecto de Grado II — Universidad Santo Tomás — 2026-2
 # 1. METADATOS DEL FIRMWARE
 # ============================================================
 
-FW_VERSION = "0.1.0"
+FW_VERSION = "0.2.0"
 """Versión del firmware. Cambiar al liberar una nueva iteración.
-Se emite en cada fila CSV para trazabilidad."""
+Se emite en cada fila CSV para trazabilidad.
+0.2.0: columna sem_dV, saturación del sensor, calentamiento."""
 
 
 # ============================================================
@@ -33,7 +34,7 @@ PIN_ADC_SIGNAL = 26
 Corresponde a ADC0 (canal 0 del ADC)."""
 
 PIN_LED_IR = 15
-"""GPIO que controla el LED infrarrojo (encendido/apagado).
+"""GPIO que controla el LED infrarrojo a través del transistor 2N2222.
 En alto = LED ON, en bajo = LED OFF."""
 
 
@@ -47,23 +48,28 @@ Un bloque dura N_SAMPLES / FS_HZ segundos."""
 
 FS_HZ = 1000
 """Frecuencia de muestreo del ADC, en Hz.
-Con N=1000 y Fs=1000 Hz, cada bloque dura 1 segundo."""
+Con N=1000 y Fs=1000 Hz, cada bloque dura 1 segundo.
+Validado en la Pico: 1000.0 Hz reales, 0 muestras atrasadas."""
 
 
 # ============================================================
-# 4. MODULACIÓN DARK / LIGHT
+# 4. MODULACIÓN DARK / LIGHT Y TIEMPOS
 # ============================================================
 
 M_REPETITIONS = 10
 """Número de repeticiones por medición completa.
-Cada repetición = 1 bloque LED OFF + 1 bloque LED ON.
-Una medición completa toma: M * 2 * (N / Fs) segundos
-(más los tiempos de estabilización del LED)."""
+Cada repetición = 1 bloque LED OFF + 1 bloque LED ON."""
 
 LED_SETTLE_MS = 20
 """Tiempo de espera en milisegundos después de encender
-o apagar el LED, antes de empezar a muestrear.
-Permite que la señal del fotodetector se estabilice."""
+o apagar el LED, antes de empezar a muestrear."""
+
+WARMUP_S = 180
+"""Tiempo de calentamiento antes de medir, en segundos.
+Determinado en la prueba de estabilidad del 2026-10-11:
+la señal se estabiliza con tau ~ 69 s y a los 180 s queda
+a menos de 1 cuenta de su valor final.
+Ver evidencias/estabilidad_2026-10-11.md"""
 
 
 # ============================================================
@@ -71,18 +77,26 @@ Permite que la señal del fotodetector se estabilice."""
 # ============================================================
 
 ADC_SATURATION_VALUE = 4095
-"""Valor máximo del ADC de 12 bits (2^12 - 1).
-Cualquier muestra igual o superior se considera saturada."""
+"""Valor máximo del ADC de 12 bits (2^12 - 1)."""
+
+SENSOR_SATURATION_COUNTS = 3050
+"""Umbral de saturación del OPT101, en cuentas.
+Alimentado a 3.3 V, el OPT101 no supera ~2.52 V (~3128 cuentas),
+por lo que satura ANTES que el ADC. Se deja un margen:
+cualquier muestra >= 3050 cuentas (~2.46 V) se considera saturada.
+PROVISIONAL: confirmar midiendo con la Pico el sensor saturado."""
+
+SATURATION_THRESHOLD = min(ADC_SATURATION_VALUE, SENSOR_SATURATION_COUNTS)
+"""Umbral efectivo de saturación que usa stats.py:
+el menor entre el límite del ADC y el del sensor."""
 
 SATURATION_RATIO_LIMIT = 0.01
 """Fracción máxima de muestras saturadas permitida por bloque.
-Si se supera, la medición se marca como SATURADO.
-0.01 = 1% de las muestras."""
+Si se supera, la medición se marca como SATURADO. 0.01 = 1 %."""
 
 NOISE_RATIO_LIMIT = 0.05
 """Coeficiente de variación máximo (sigma / mu) en el bloque LED ON.
-Si se supera, la medición se marca como RUIDO_ALTO.
-0.05 = 5% de ruido relativo."""
+Si se supera, la medición se marca como RUIDO_ALTO. 0.05 = 5 %."""
 
 
 # ============================================================
@@ -93,12 +107,10 @@ ADC_BITS = 12
 """Resolución del ADC del RP2350. No cambiar."""
 
 ADC_VREF = 3.3
-"""Voltaje de referencia del ADC, en voltios.
-En la Pico 2 W, el ADC usa VREF = 3V3 del regulador interno."""
+"""Voltaje de referencia del ADC, en voltios."""
 
 ADC_LSB_V = ADC_VREF / (2 ** ADC_BITS)
-"""Resolución del ADC en voltios por cuenta (LSB = Least Significant Bit).
-Para 12 bits y 3.3 V: ~0.806 mV por cuenta."""
+"""Voltios por cuenta del ADC: ~0.806 mV."""
 
 
 # ============================================================
@@ -106,8 +118,7 @@ Para 12 bits y 3.3 V: ~0.806 mV por cuenta."""
 # ============================================================
 
 SERIAL_BAUDRATE = 115200
-"""Velocidad del puerto USB serial, en baudios.
-115200 es el estándar y es rápido para CSV línea a línea."""
+"""Velocidad del puerto USB serial, en baudios."""
 
 
 # ============================================================
@@ -129,6 +140,7 @@ CSV_COLUMNS = [
     "sigma_light",
     "dV",
     "sigma_dV",
+    "sem_dV",
     "SNR",
     "n_sat_light",
     "n_sat_dark",
@@ -137,7 +149,8 @@ CSV_COLUMNS = [
     "is_baseline",
 ]
 """Lista de columnas del CSV, en orden de emisión.
-Record.py construye cada fila respetando este orden."""
+sigma_dV = dispersión de cada muestra individual.
+sem_dV   = incertidumbre de la media (error estándar)."""
 
 CSV_HEADER = ",".join(CSV_COLUMNS)
 """Cadena única con el encabezado del CSV, lista para imprimir."""
@@ -146,7 +159,6 @@ CSV_HEADER = ",".join(CSV_COLUMNS)
 # ============================================================
 # 9. ESTADOS DE CALIDAD
 # ============================================================
-# Valores permitidos para el campo 'quality' de cada fila.
 
 QUALITY_OK = "OK"
 QUALITY_SATURATED = "SATURADO"
@@ -161,15 +173,13 @@ QUALITY_ERROR_PREFIX = "ERROR"  # se usa como "ERROR:motivo"
 # deben vivir en firmware/secrets.py (NO versionado — ver .gitignore).
 
 WIFI_ENABLED = False
-"""Switch global para WiFi. Si es False, io_wifi.py no intenta conectarse."""
+"""Switch global para WiFi."""
 
 WIFI_ENDPOINT_URL = ""
-"""URL del endpoint HTTP al que se envían las filas resumen.
-Vacío = no enviar."""
+"""URL del endpoint HTTP al que se envían las filas resumen."""
 
 WIFI_TIMEOUT_S = 5
-"""Timeout de las operaciones de red, en segundos.
-Si se supera, la fila se descarta silenciosamente."""
+"""Timeout de las operaciones de red, en segundos."""
 
 
 # ============================================================
@@ -177,3 +187,4 @@ Si se supera, la fila se descarta silenciosamente."""
 # ============================================================
 
 DEFAULT_SAMPLE_ID = "sin_id"
+"""ID de muestra por defecto cuando el operador no fija uno."""

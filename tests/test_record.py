@@ -251,3 +251,57 @@ class TestRowForSummary:
             idx = config.CSV_COLUMNS.index(col_name)
             assert campos[idx] == "", \
                 "Esperaba '{}' vacío, encontré: '{}'".format(col_name, campos[idx])
+
+            
+
+# ============================================================
+# TESTS AGREGADOS EN v0.2.0 — columna sem_dV
+# ============================================================
+
+class TestSemDvEnFilas:
+    """La columna sem_dV (incertidumbre de la media) debe llenarse."""
+
+    def _bloques(self):
+        light = {"n": 1000, "mu": 1641.8, "sigma": 17.6, "sem": 0.557,
+                 "n_sat": 0, "min_val": 1590, "max_val": 1678}
+        dark = {"n": 1000, "mu": 23.6, "sigma": 3.7, "sem": 0.117,
+                "n_sat": 0, "min_val": 6, "max_val": 39}
+        dv = {"dV": 1618.2, "sigma_dV": 18.0, "sem_dV": 0.569}
+        return light, dark, dv
+
+    def test_sem_dv_en_fila_de_repeticion(self):
+        light, dark, dv = self._bloques()
+        row = record.row_for_repetition(
+            timestamp_ms=1, run_id="R001", muestra_id="agua",
+            rep=1, block_light=light, block_dark=dark, dv_result=dv,
+            quality=config.QUALITY_OK,
+        )
+        campos = row.split(",")
+        idx = config.CSV_COLUMNS.index("sem_dV")
+        assert campos[idx] == "0.569"
+
+    def test_sem_dv_en_fila_summary(self):
+        dv_summary = {"n_reps": 10, "mean_dV": 1601.2, "sigma_dV": 0.7,
+                      "sem_dV": 0.221, "min_dV": 1600.1, "max_dV": 1602.4}
+        row = record.row_for_summary(
+            timestamp_ms=1, run_id="R001", muestra_id="agua",
+            N=1000, dv_summary=dv_summary, quality=config.QUALITY_OK,
+        )
+        campos = row.split(",")
+        idx = config.CSV_COLUMNS.index("sem_dV")
+        assert campos[idx] == "0.221"
+
+    def test_sin_sem_dv_queda_vacio(self):
+        """Si el dict no trae sem_dV (código viejo), la columna queda vacía
+        en vez de romper el programa."""
+        light, dark, dv = self._bloques()
+        del dv["sem_dV"]
+        row = record.row_for_repetition(
+            timestamp_ms=1, run_id="R001", muestra_id="agua",
+            rep=1, block_light=light, block_dark=dark, dv_result=dv,
+            quality=config.QUALITY_OK,
+        )
+        campos = row.split(",")
+        idx = config.CSV_COLUMNS.index("sem_dV")
+        assert campos[idx] == ""
+        assert len(campos) == len(config.CSV_COLUMNS)

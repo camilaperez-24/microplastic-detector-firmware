@@ -47,10 +47,6 @@ class RunIdGenerator:
 
         Formato: 'R' seguido de 3 dígitos con ceros a la izquierda
         hasta R999. A partir de R1000 crece sin padding.
-
-        Devuelve
-        --------
-        str — nuevo run_id, por ejemplo 'R042'.
         """
         self._counter += 1
         if self._counter < 1000:
@@ -60,10 +56,7 @@ class RunIdGenerator:
     def current(self):
         """Devuelve el último run_id generado, sin avanzar el contador.
 
-        Devuelve
-        --------
-        str — último run_id. Si aún no se ha llamado a next(),
-              devuelve 'R000'.
+        Si aún no se ha llamado a next(), devuelve 'R000'.
         """
         if self._counter == 0:
             return "R000"
@@ -83,15 +76,7 @@ def format_number(value, decimals=3):
     - Floats se redondean al número de decimales indicado.
     - None se emite como cadena vacía.
     - Strings se devuelven tal cual (para campos como 'OK', 'R001').
-
-    Parámetros
-    ----------
-    value    : int | float | str | None — valor a formatear.
-    decimals : int — número de decimales para floats (default 3).
-
-    Devuelve
-    --------
-    str — representación textual lista para incluir en CSV.
+    - Booleanos se emiten como '1' o '0'.
     """
     if value is None:
         return ""
@@ -103,7 +88,6 @@ def format_number(value, decimals=3):
     if isinstance(value, int):
         return str(value)
     if isinstance(value, float):
-        # Caso especial: infinito y NaN no son útiles en CSV
         if value != value:  # NaN
             return "NaN"
         if value == float("inf"):
@@ -111,7 +95,6 @@ def format_number(value, decimals=3):
         if value == float("-inf"):
             return "-inf"
         return "{:.{}f}".format(value, decimals)
-    # Cualquier otro tipo: convertir a str por seguridad
     return str(value)
 
 
@@ -126,20 +109,9 @@ def build_csv_row(data):
     de cada columna. Si una columna no está en el diccionario,
     se emite como cadena vacía.
 
-    Parámetros
-    ----------
-    data : dict — mapea nombre de columna → valor.
-                  Las claves deben coincidir con config.CSV_COLUMNS.
-
     Devuelve
     --------
     str — línea CSV completa, sin salto de línea al final.
-
-    Ejemplo
-    -------
-    >>> data = {"timestamp_ms": 12345, "run_id": "R001", "mu_light": 2015.7, ...}
-    >>> build_csv_row(data)
-    '12345,R001,,,,,,,,2015.700,...'
     """
     campos = []
     for col in config.CSV_COLUMNS:
@@ -157,9 +129,6 @@ def row_for_repetition(timestamp_ms, run_id, muestra_id, rep,
                         quality, is_baseline=False):
     """Ensambla una fila CSV para una repetición individual.
 
-    Esta es la fila que se emite por cada una de las M repeticiones
-    de una medición MEASURE.
-
     Parámetros
     ----------
     timestamp_ms : int   — ms desde arranque de la Pico.
@@ -168,15 +137,15 @@ def row_for_repetition(timestamp_ms, run_id, muestra_id, rep,
     rep          : int   — número de repetición (1..M).
     block_light  : dict  — salida de stats.welford_block() para LED ON.
     block_dark   : dict  — salida de stats.welford_block() para LED OFF.
-    dv_result    : dict  — salida de stats.delta_v().
-    quality      : str   — flag de calidad (QUALITY_OK, QUALITY_SATURATED, etc.)
+    dv_result    : dict  — salida de stats.delta_v_from_blocks()
+                           (claves dV, sigma_dV y sem_dV).
+    quality      : str   — flag de calidad de la repetición.
     is_baseline  : bool  — True si esta medición es línea base.
 
     Devuelve
     --------
     str — línea CSV lista para imprimir.
     """
-    # Calcular SNR aquí mismo para no depender de otro import
     sigma_dv = dv_result["sigma_dV"]
     if sigma_dv == 0:
         snr_val = float("inf")
@@ -196,6 +165,7 @@ def row_for_repetition(timestamp_ms, run_id, muestra_id, rep,
         "sigma_light": block_light["sigma"],
         "dV": dv_result["dV"],
         "sigma_dV": dv_result["sigma_dV"],
+        "sem_dV": dv_result.get("sem_dV", ""),
         "SNR": snr_val,
         "n_sat_light": block_light["n_sat"],
         "n_sat_dark": block_dark["n_sat"],
@@ -214,24 +184,21 @@ def row_for_summary(timestamp_ms, run_id, muestra_id, N, dv_summary,
                      quality, is_baseline=False):
     """Ensambla la fila SUMMARY que resume las M repeticiones.
 
-    Esta fila se emite UNA VEZ al final de cada MEASURE y contiene
-    el promedio y la desviación entre repeticiones de los ΔV.
-
     Parámetros
     ----------
     timestamp_ms : int   — ms al momento de emitir el resumen.
     run_id       : str   — mismo run_id de las repeticiones.
     muestra_id   : str   — mismo muestra_id de las repeticiones.
     N            : int   — número de muestras por bloque (para contexto).
-    dv_summary   : dict  — salida de stats.summarize_repetitions().
-    quality      : str   — flag de calidad global de la medición.
+    dv_summary   : dict  — salida de stats.summarize_repetitions()
+                           (claves mean_dV, sigma_dV y sem_dV).
+    quality      : str   — flag de calidad global (stats.combine_quality).
     is_baseline  : bool  — True si es medición de línea base.
 
     Devuelve
     --------
     str — línea CSV SUMMARY lista para imprimir.
     """
-    # SNR global del resumen
     sigma_dv = dv_summary["sigma_dV"]
     if sigma_dv == 0:
         snr_val = float("inf")
@@ -251,6 +218,7 @@ def row_for_summary(timestamp_ms, run_id, muestra_id, N, dv_summary,
         "sigma_light": "",
         "dV": dv_summary["mean_dV"],
         "sigma_dV": dv_summary["sigma_dV"],
+        "sem_dV": dv_summary.get("sem_dV", ""),
         "SNR": snr_val,
         "n_sat_light": "",
         "n_sat_dark": "",
