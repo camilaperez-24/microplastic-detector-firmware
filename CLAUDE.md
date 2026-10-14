@@ -1,130 +1,121 @@
-# Contexto del proyecto para asistentes de IA
+# Contexto del proyecto para Claude Code
 
-Este archivo es leído automáticamente por Claude Code y otros asistentes.
-Contiene las decisiones técnicas que no deben re-cuestionarse en cada sesión.
+Claude Code lee este archivo automáticamente al iniciar cada sesión.
+Contiene decisiones ya tomadas y validadas con pruebas en el hardware real:
+no cambiarlas sin datos nuevos que lo justifiquen.
+
+Documentación que se carga junto con este archivo:
+
+- @docs/estado_del_proyecto.md — resultados de las pruebas, decisiones y pendientes.
+- @docs/protocolo_medicion.md — cómo se mide en el laboratorio.
+- @docs/guia_de_datos.md — significado de cada columna y mensaje del firmware.
 
 ---
 
 ## 1. Proyecto
 
-Firmware para prototipo optoelectrónico de detección preliminar de partículas
-compatibles con microplásticos tipo polietileno en agua.
-Universidad Santo Tomás, Proyecto de Grado II, 2026-2.
+Firmware y análisis para un prototipo optoelectrónico de **detección preliminar
+de partículas compatibles con microplásticos tipo polietileno (PE) en agua**.
+Proyecto de Grado II, Ingeniería Electrónica, Universidad Santo Tomás, 2026-2.
 
-**Alcance del firmware:**
-- Adquirir señal del fotodetector.
-- Controlar LED de iluminación.
-- Calcular estadística por medición.
-- Entregar datos por USB serial y opcionalmente por WiFi.
+- Estudiantes: Camila Pérez Mercado y Diego Alejandro Rodríguez Guzmán.
+- Director: M.Sc. Oscar Mauricio Gelvez Lizarazo. Codirector: M.Sc. Carlos Javier Mojica Casallas.
 
-**Explícitamente fuera de alcance:**
-- Identificación química del polímero.
-- Cuantificación absoluta de concentración.
-- Aprendizaje automático.
-- Validación normativa o industrial.
+**Fuera de alcance:** identificación química del polímero, cuantificación
+exacta de concentración, diferenciación entre polímeros, certificación.
 
-## 2. Hardware
+## 2. Cómo trabajar con este equipo
 
-- **MCU:** Raspberry Pi Pico 2 W (RP2350, silicon stepping A4).
-- **Sensor:** OPT101 (fotodiodo + TIA integrados, R_f interna de 1 MΩ).
-- **Emisor:** LED infrarrojo + resistencia de 56 Ω en serie, controlado por GPIO.
-- **Alimentación:** USB (5 V) → regulador interno de la Pico → 3V3(OUT).
-  OPT101 y LED se alimentan de 3V3(OUT), NO de 5 V externo.
-- **Conexión ADC:** salida del OPT101 va DIRECTA al pin ADC — SIN divisor resistivo.
-  (El swing del OPT101 a 3.3 V queda naturalmente dentro del rango del ADC.)
+- Son estudiantes de 8.º semestre aprendiendo Git y Python. **Explicar en
+  español, paso a paso, el porqué de cada cambio.**
+- **Antes de modificar código, mostrar el plan y esperar aprobación.**
+- Un cambio a la vez; no tocar archivos que no hacen falta para la tarea.
+- Entorno: Windows 11, terminal `cmd`, entorno virtual en `venv\`
+  (activar con `venv\Scripts\activate.bat`), Python 3.14, pytest 9.1.1.
+  VS Code para editar y Thonny para la Pico.
 
-## 3. Lenguaje y entorno
+## 3. Hardware (estado real, validado)
 
-- **MicroPython 1.27+** para Pico 2 W (build RPI_PICO2_W).
-- **Testing en PC:** CPython 3.11 o 3.12 + pytest.
-- No usar bibliotecas que no estén en MicroPython estándar (NO numpy, NO scipy).
+- **MCU:** Raspberry Pi Pico 2 W (RP2350), MicroPython **v1.29.0** (2026-08-24).
+- **OPT101** alimentado a 3.3 V desde la Pico:
+  pin 1 (V+) → 3V3 (pin 36); pines 3 y 8 → GND (pin 38);
+  pin 4 unido a pin 5; **pin 5 (salida) → GP26 / pin 31, directo, sin divisor**;
+  condensador de 100 nF entre pin 1 y GND.
+- **LED IR** controlado por GP15 (pin 20) con transistor 2N2222:
+  ánodo → 3V3; cátodo → R_LED → colector; emisor → GND; base ← 1 kΩ ← GP15.
+  GP15 en alto = LED encendido. **R_LED: 470 de documentar**
+  (se aumentó desde 56 Ω porque el OPT101 saturaba).
+- El OPT101 a 3.3 V **satura en ~2.52 V (~3128 cuentas)**, antes que el ADC
+  (4095). Por eso el umbral de saturación del firmware es 3050 cuentas.
+- **Cámara:** tubo impreso en 3D, abierto por los dos extremos. El chip
+  (microcanal en L) entra deslizando por una ranura; el tubo se usa inclinado
+  con ángulo fijo y un tope en el extremo inferior. LED y OPT101 en paredes opuestas.
+- **Fallas ya vistas:** cables que se sueltan (señal del OPT101 el 12-oct,
+  LED el 13-oct) y luz ambiente que entra por los extremos del tubo.
 
-## 4. Decisiones técnicas no negociables
+## 4. Firmware v0.2.0 — arquitectura
 
-**4.1 — Estadística:**
-Usar siempre el algoritmo de **Welford** en línea para media y varianza.
-Nunca usar la fórmula ingenua Σx² − (Σx)²/n, que pierde precisión en float32.
+| Archivo | Capa | Dónde corre | Tests |
+|---|---|---|---|
+| `firmware/config.py` | Constantes (sin lógica ni hardware) | PC y Pico | indirectos |
+| `firmware/adq.py` | 1 · Adquisición: LED + ADC con Fs exacta | Solo Pico | No |
+| `firmware/stats.py` | 2 · Welford, sem, ΔV, calidad | PC y Pico | `tests/test_stats.py` |
+| `firmware/record.py` | 3 · Filas CSV y run_id | PC y Pico | `tests/test_record.py` |
+| `firmware/io_serial.py` | 4 · Parser de comandos + E/S USB no bloqueante | Parser: PC y Pico. `SerialIO`: solo Pico | `tests/test_io_serial.py` |
+| `firmware/main.py` | Orquestación: calentamiento, MEASURE, MONITOR, STOP | Solo Pico | No (probado en hardware) |
+| `firmware/io_wifi.py` | WiFi opcional | — | Vacío por ahora |
 
-**4.2 — Modulación dark/light:**
-Cada medición alterna LED OFF (V_dark) y LED ON (V_light).
-El observable físico útil es ΔV = V_light − V_dark.
-Esto elimina deriva DC, luz ambiente y offset térmico del TIA.
+- **83 tests en verde** con `python -m pytest -v`.
+- **Ejecución en la Pico:** la carpeta `firmware/` se sube a la raíz de la Pico
+  con Thonny ("Subir a /"). Se arranca desde Thonny con un archivo local
+  (fuera del repo) que contiene:
+  `from firmware.main import main` y `main()`.
+- **Comandos:** `HELLO`, `HELP`, `STATUS`,
+  `SET ID=x N=n FS=n M=n WARMUP=s` (sin espacios alrededor de `=`),
+  `MEASURE`, `BASELINE`, `MONITOR [s]`, `STOP`.
+- `MEASURE` = calentamiento (180 s, sin guardar) + M = 10 repeticiones (una fila
+  CSV cada una) + fila `SUMMARY`. Cada repetición: 1000 muestras con LED apagado
+  y 1000 con LED encendido, a 1000 Hz.
+- **Salida:** filas CSV de 19 columnas; mensajes que empiezan con `#`
+  (`#ERROR`, `#MON`) para que el análisis los ignore (`comment="#"`).
 
-**4.3 — Separación de capas:**
-- `adq.py` NO imprime, NO procesa estadística. Solo llena buffers.
-- `stats.py` NO toca hardware. Solo recibe listas/arrays y devuelve dicts.
-- `record.py` NO ejecuta lógica de medición. Solo formatea.
-- `main.py` orquesta.
+## 5. Reglas no negociables
 
-Esto permite testear `stats.py` y `record.py` en PC sin la Pico.
+1. Media y varianza **siempre con Welford** (nunca Σx² − (Σx)²/n): la Pico usa float de 32 bits.
+2. La señal útil es **ΔV = μ_light − μ_dark** (modulación dark/light del LED).
+3. **Separación de capas:** `adq.py` no calcula ni imprime; `stats.py` y
+   `record.py` no tocan hardware ni imprimen; `main.py` orquesta.
+4. Muestras crudas en `array.array('H')`, en cuentas de 12 bits (`read_u16() >> 4`).
+5. En el bucle de adquisición **no usar `sleep`**: temporizar con
+   `time.ticks_us()` / `ticks_diff()` / `ticks_add()`.
+6. `config.py` solo contiene constantes; nada de `import machine`.
+7. El firmware no usa librerías que no existan en MicroPython (nada de numpy o scipy).
+   Seguir el estilo existente: `.format()` para cadenas.
+8. Toda lógica nueva que se pueda probar en PC lleva tests, y **pytest debe
+   quedar en verde antes de cada commit**.
+9. Si cambia el formato del CSV, **subir `FW_VERSION`**.
+10. El firmware no debe caerse: los errores se informan con `#ERROR` y el LED queda apagado.
+11. Comentarios y docstrings en español; nombres de variables y funciones en inglés.
 
-**4.4 — Tipos de datos:**
-- Lecturas crudas del ADC: `array.array('H', ...)` (uint16).
-- No usar listas de Python para los bloques de muestras (memoria y velocidad).
-- Pasar a float solo al calcular estadísticos.
+## 6. Git
 
-**4.5 — Temporización:**
-- No usar `time.sleep()` dentro del loop de adquisición.
-- Usar `time.ticks_us()` + `time.ticks_diff()` para control de Fs.
+- Repositorio: `github.com/camilaperez-24/microplastic-detector-firmware`, rama `main`.
+- Commits pequeños, mensaje estilo `tipo(alcance): descripcion` en español sin tildes
+  (`feat`, `fix`, `docs`, `test`, `chore`, `refactor`).
+- Las evidencias experimentales van en `evidencias/`. Los datos crudos grandes
+  en `data/` no se versionan (ver `.gitignore`).
 
-**4.6 — Robustez:**
-- Capa WiFi debe fallar silenciosamente (try/except OSError).
-- Si WiFi se cae, serial y adquisición siguen funcionando.
-- Toda excepción se captura y se emite como fila CSV con `quality=ERROR:<motivo>`.
+## 7. Próximos trabajos de código (orden sugerido)
 
-## 5. Arquitectura
-
-
-## 6. Contrato de datos — fila CSV
-
-**Encabezado exacto** (una sola línea, sin espacios):
-
-timestamp_ms,run_id,muestra_id,rep,N,Fs_Hz,mu_dark,sigma_dark,mu_light,sigma_light,dV,sigma_dV,SNR,n_sat_light,n_sat_dark,quality,fw_version,is_baseline
-
-
-Cada comando `MEASURE` produce **M + 1 filas**: M repeticiones + 1 fila resumen
-con `rep=SUMMARY` donde `mu_light`, `dV`, etc. son promedios sobre las M
-repeticiones y `sigma_*` es la desviación entre repeticiones.
-
-**Estados de `quality`:**
-- `OK` — todas las repeticiones válidas.
-- `SATURADO` — alguna rep con >1 % muestras en ADC = 4095 (12 bits).
-- `RUIDO_ALTO` — σ_light / μ_light > umbral (default 5 %).
-- `ERROR:<motivo>` — excepción capturada.
-
-## 7. Comandos serial
-
-Terminados en `\n`. Respuesta también en una línea.
-
-- `HELLO` → devuelve versión + config + encabezado CSV.
-- `SET N=1000 FS=1000 M=10 ID=agua_pura_01` → actualiza parámetros.
-- `BASELINE` → medición marcada como línea base (`is_baseline=1`).
-- `MEASURE` → medición estándar.
-- `STREAM ON|OFF` → envío bloque-a-bloque crudo (debug).
-- `WIFI ON|OFF`, `WIFI SSID=... PASS=...`.
-
-## 8. Reglas para generación de código
-
-- Antes de escribir código, leer `firmware/config.py` y respetar los nombres de constantes.
-- Toda función pública lleva docstring con: qué recibe, qué devuelve, unidades físicas.
-- Comentarios en español (es un proyecto académico colombiano).
-- Nombres de variables en inglés (convención de código).
-- Priorizar legibilidad sobre micro-optimización.
-- Los tests en `tests/` se corren con `python -m pytest` en PC, NO en la Pico.
-
-## 9. Orden de desarrollo
-
-Construir de adentro hacia afuera. No pasar al siguiente paso si el anterior
-no tiene su test en verde.
-
-1. `config.py` — constantes.
-2. `stats.py` + tests PC — Welford, ΔV, flags.
-3. `record.py` + tests PC — formateo CSV, run_id.
-4. Hola mundo en Pico (sin circuito).
-5. `adq.py` básico — leer ADC, test con GND y 3V3.
-6. Integración: adq + stats + serial.
-7. Control LED + secuencia dark/light.
-8. Parser de comandos `io_serial.py`.
-9. WiFi opcional `io_wifi.py`.
-10. Protocolos de validación experimental.
-
+1. **Script de captura en PC** (`tools/captura.py`, con pyserial): guarda en un
+   `.csv` todo lo que manda la Pico y permite escribir comandos. Thonny debe estar
+   cerrado mientras se usa, porque ocupa el puerto.
+2. **Script de análisis** (`tools/analisis.py`, puede usar pandas/scipy/matplotlib):
+   toma solo las filas `SUMMARY` válidas, agrupa por tipo de muestra
+   (`limpia_*` contra `pe_*`) y aplica la **prueba t de Welch con un ΔV por
+   llenado** (nunca usar las repeticiones como datos independientes). Gráficas para la tesis.
+3. **Firmware v0.3:** alerta de "posible sensor desconectado" (μ_dark muy alto o
+   σ muy alto) también en `MONITOR`; revisar el criterio `RUIDO_ALTO`, que no
+   tiene sentido cuando el PE bloquea casi toda la luz.
+4. Actualizar `README.md` con el estado real.
+5. Opcional: `io_wifi.py`, arranque automático en la Pico.
