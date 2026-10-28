@@ -1,0 +1,96 @@
+# Reubicación y alineación del OPT101 — 17/18-oct-2026
+# Fragmentos de la Shell de Thonny enviados durante la sesión (algunos incompletos).
+# La condición de cada medición es la que se conversó en el momento: confirmar las marcadas con (?).
+# Entre algunas mediciones se movió el sensor, así que no todas comparan la misma posición.
+
+## 1) 23:48 — Nueva posición del OPT101 (chip: con agua ?)
+#MON,0.0,21.5,81.8,60.4,5.0
+#MON,2.1,21.8,81.4,59.6,5.1
+#MON,4.2,22.0,81.6,59.6,5.1
+#MON,6.3,21.7,81.8,60.1,5.0
+#MON,8.4,21.9,81.6,59.7,5.1
+#MON,10.5,21.7,81.3,59.6,4.9
+#MON,12.6,21.9,81.7,59.8,5.2
+#MON,14.7,21.7,81.9,60.2,4.8
+#MON,16.8,22.0,81.5,59.6,4.9
+#MON,18.9,21.7,81.6,59.9,5.3
+# MONITOR TERMINADO
+=> dV ≈ 60: el sensor recibe ~3 % de la luz del 14-oct (2072).
+
+## 2) 23:54 — Misma posición, sin chip (?)
+monitor 20
+# MONITOR 20 s (STOP para cancelar)
+#MON,t_s,mu_dark,mu_light,dV,sigma_light
+#MON,0.0,21.6,65.8,44.1,5.0
+#MON,2.1,22.0,66.1,44.1,5.0
+#MON,4.2,21.9,66.1,44.2,5.0
+#MON,6.3,21.8,65.7,43.9,5.1
+#MON,8.4,21.9,66.0,44.1,5.0
+#MON,10.5,21.9,65.8,43.9,4.7
+#MON,12.6,21.6,66.0,44.4,4.9
+#MON,14.7,22.2,65.9,43.8,5.2
+#MON,16.8,21.5,66.3,44.7,5.2
+#MON,18.9,22.0,66.0,44.0,5.1
+# MONITOR TERMINADO
+=> dV ≈ 44: sensor fuera del haz (solo recibe reflejos).
+
+## 3) 23:59 — Sensor regresado hacia la posición anterior, microcanal SIN agua
+monitor 20
+# MONITOR 20 s (STOP para cancelar)
+#MON,t_s,mu_dark,mu_light,dV,sigma_light
+#MON,0.0,22.1,1036.4,1014.4,12.5
+#MON,2.1,21.8,1035.0,1013.2,12.9
+#MON,4.2,21.9,1034.6,1012.7,12.8
+#MON,6.3,21.6,1034.0,1012.3,12.5
+#MON,8.4,22.1,1033.8,1011.7,13.0
+#MON,10.5,21.8,1034.6,1012.8,12.4
+#MON,12.6,22.0,1034.6,1012.6,12.3
+#MON,14.7,22.0,1033.4,1011.3,12.6
+#MON,16.8,21.9,1033.3,1011.5,12.1
+#MON,18.9,22.1,1033.2,1011.1,12.7
+# MONITOR TERMINADO
+=> dV ≈ 1012.
+
+## 4) 00:05 — Durante la alineación con MONITOR 120 (fragmento; chip con agua ?)
+,18.9,21.9,87.0,65.1,5.9
+#MON,21.0,21.9,87.2,65.3,5.9
+#MON,23.1,22.0,87.0,65.0,5.8
+#MON,25.2,21.9,87.0,65.1,5.8
+#MON,27.3,21.8,87.5,65.7,6.1
+#MON,29.4,22.0,92.4,70.4,5.9
+#MON,31.5,21.8,92.8,70.9,5.3
+#MON,33.6,21.7,92.6,70.9,5.2
+#MON,35.7,21.7,92.8,71.1,5.4
+
+## 5) 00:09 — Sin chip ("sin nada"), sensor alineado (fragmento)
+#MON,31.5,22.0,3150.0,3128.0,29.2
+#MON,33.6,22.0,3153.8,3131.8,28.
+=> mu_light ≈ 3150: el OPT101 llega a su saturación (~3128 cuentas, ~2.52 V).
+
+## 6) 00:12 — Con microcanal y agua (fragmento)
+#MON,48.3,21.9,2233.0,2211.1,24.5
+#MON,50.4,22.0,2232.3,2210.2,24.5
+=> dV ≈ 2210, sin saturar.
+
+## 7) 00:14 — Sensor fijado, chip con agua limpia, tubo tapado: confirmación
+monitor 20
+# MONITOR 20 s (STOP para cancelar)
+#MON,t_s,mu_dark,mu_light,dV,sigma_light
+#MON,0.0,21.7,2245.1,2223.4,25.6
+#MON,2.1,21.5,2246.0,2224.4,24.2
+#MON,4.2,21.9,2243.6,2221.7,25.7
+#MON,6.3,22.1,2243.7,2221.6,25.0
+#MON,8.4,21.9,2243.0,2221.1,24.8
+#MON,10.5,21.6,2243.6,2221.9,25.0
+#MON,12.6,21.8,2243.9,2222.0,23.0
+#MON,14.7,22.0,2241.1,2219.0,24.8
+#MON,16.8,21.8,2241.2,2219.4,24.5
+#MON,18.9,22.0,2240.9,2218.9,24.6
+# MONITOR TERMINADO
+=> Referencia final: dV ≈ 2221 (σ_light/μ_light ≈ 1.1 %, mu_light ≈ 2243 < 3050).
+
+=== NOTAS ===
+- Motivo del cambio de posición: ___
+- Método de alineación: protocolo, sección 8 (buscar el máximo de dV con MONITOR).
+- R_LED = 470 Ω.
+- Desde aquí el montaje queda fijo (LED y OPT101 fijos en el montaje).

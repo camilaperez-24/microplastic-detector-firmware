@@ -43,15 +43,19 @@ exacta de concentración, diferenciación entre polímeros, certificación.
   condensador de 100 nF entre pin 1 y GND.
 - **LED IR** controlado por GP15 (pin 20) con transistor 2N2222:
   ánodo → 3V3; cátodo → R_LED → colector; emisor → GND; base ← 1 kΩ ← GP15.
-  GP15 en alto = LED encendido. **R_LED: 470 de documentar**
-  (se aumentó desde 56 Ω porque el OPT101 saturaba).
+  GP15 en alto = LED encendido. **R_LED = 470 Ω** (se aumentó desde 56 Ω porque
+  el OPT101 saturaba): I_LED ≈ 4.3 mA calculada (V_F ≈ 1.2 V, V_CE(sat) ≈ 0.1 V);
+  I_B ≈ 2.6 mA, el transistor trabaja saturado.
 - El OPT101 a 3.3 V **satura en ~2.52 V (~3128 cuentas)**, antes que el ADC
   (4095). Por eso el umbral de saturación del firmware es 3050 cuentas.
 - **Cámara:** tubo impreso en 3D, abierto por los dos extremos. El chip
   (microcanal en L) entra deslizando por una ranura; el tubo se usa inclinado
   con ángulo fijo y un tope en el extremo inferior. LED y OPT101 en paredes opuestas.
 - **Fallas ya vistas:** cables que se sueltan (señal del OPT101 el 12-oct,
-  LED el 13-oct) y luz ambiente que entra por los extremos del tubo.
+  LED el 13-oct), luz ambiente que entra por los extremos del tubo y sensor
+  desalineado al reubicarlo (17-oct; se realineó con `MONITOR`).
+- **Montaje congelado desde el 18-oct** (referencia ΔV ≈ 2221 con agua limpia):
+  no mover sensor, LED ni tubo hasta terminar la campaña, salvo daño.
 
 ## 4. Firmware v0.2.0 — arquitectura
 

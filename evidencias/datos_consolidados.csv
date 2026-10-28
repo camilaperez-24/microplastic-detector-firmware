@@ -1,0 +1,30 @@
+fecha,sesion,chip,run_id,muestra_id,prueba,grupo,referencia_dV,dV,sem_dV,T_rel_pct,clasificacion,acierto,valido,motivo_descarte,archivo_evidencia
+2026-10-18 (madrugada),S1,1,R001,limpia_01,campaña,limpia,2221.3,2212.052,0.187,99.6,sin partículas,si,si,,piloto_pe_2026-10-18.txt
+2026-10-18 (madrugada),S1,1,R002,pe_01,campaña,pe_2particulas,2221.3,841.457,0.118,37.9,PE probable,si,si,,piloto_pe_2026-10-18.txt
+2026-10-18 (madrugada),S1,1,R003,limpia_02,campaña,limpia,2221.3,2215.758,0.316,99.8,sin partículas,si,si,,piloto_pe_2026-10-18.txt
+2026-10-18 (madrugada),S1,1,R004,pe_02,campaña,pe_2particulas,2221.3,1038.821,0.146,46.8,PE probable,si,si,,piloto_pe_2026-10-18.txt
+2026-10-18 (madrugada),S1,1,R005,limpia_03,campaña,limpia,2221.3,2119.834,0.252,95.4,sin partículas,si,si,,piloto_pe_2026-10-18.txt
+2026-10-18 (madrugada),S1,1,R006,pe_03,campaña,pe_2particulas,2221.3,591.688,0.159,26.6,PE probable,si,si,,piloto_pe_2026-10-18.txt
+2026-10-18 (tarde),S2,1,R002,pe_4,campaña,pe_2particulas,2178.9,482.125,0.105,22.1,PE probable,si,si,,campana_2026-10-18_tarde.txt
+2026-10-18 (tarde),S2,1,R001,limpia_4,campaña,limpia,2178.9,2234.566,0.237,102.6,sin partículas,si,si,,campana_2026-10-18_tarde.txt
+2026-10-18 (tarde),S2,1,R001,pe_5,campaña,pe_2particulas,2178.9,600.455,0.103,27.6,PE probable,si,si,,campana_2026-10-18_tarde.txt
+2026-10-18 (tarde),S2,1,R002,limpia_5,campaña,limpia,2178.9,2226.013,0.471,102.2,sin partículas,si,si,,campana_2026-10-18_tarde.txt
+2026-10-18 (tarde),S2,1,R003,pe_6,campaña,pe_2particulas,2178.9,1235.366,0.170,56.7,PE probable,si,si,,campana_2026-10-18_tarde.txt
+2026-10-18 (tarde),S2,1,R005,limpia_6,campaña,limpia,2178.9,2258.686,0.322,103.7,sin partículas,si,si,,campana_2026-10-18_tarde.txt
+2026-10-18 (tarde),S2,1,R008,pe_7,campaña,pe_2particulas,2178.9,581.079,0.302,26.7,,,no,filtración del chip 1 durante la medición,campana_2026-10-18_tarde.txt
+2026-10-20,S3,2,R002,limpia_8,campaña,limpia,2001.7,1804.313,0.939,90.1,,,no,chip con fuga (se salió el agua),campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R005,limpia_8,campaña,limpia,2001.7,1991.017,0.372,99.5,sin partículas,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R006,pe_8,campaña,pe_2particulas,2001.7,533.963,0.113,26.7,PE probable,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R007,limpia_9,campaña,limpia,2001.7,2229.684,0.254,111.4,,,no,chip con fuga usado por error (se salió el agua),campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R008,limpia_9,campaña,limpia,2001.7,1883.710,0.319,94.1,sin partículas,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R010,pe_9,campaña,pe_2particulas,2001.7,1099.956,0.211,55.0,PE probable,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R011,limpia_10,campaña,limpia,2001.7,1875.794,0.349,93.7,sin partículas,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R012,pe_10,campaña,pe_2particulas,2001.7,410.288,0.102,20.5,PE probable,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R013,limpia_11,campaña,limpia,2001.7,2013.584,0.399,100.6,sin partículas,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R014,pe_11,campaña,pe_2particulas,2001.7,321.895,0.340,16.1,PE probable,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R015,limpia_12,campaña,limpia,2001.7,2020.848,0.498,101.0,sin partículas,si,si,,campana_chip2_2026-10-20.txt
+2026-10-20,S3,2,R017,pe_12,campaña,pe_2particulas,2001.7,252.532,0.089,12.6,PE probable,si,si,,campana_chip2_2026-10-20.txt
+2026-10-22,S4,2,R001,PE_1-1particula,complementaria,pe_1particula_3x2mm,1760.4,483.205,0.095,27.4,PE probable,si,si,,una_particula_2026-10-22.txt
+2026-10-22,S4,2,R002,PE_2-1particula,complementaria,pe_1particula_3x2mm,1760.4,1835.038,0.184,104.2,sin partículas,no,si,,una_particula_2026-10-22.txt
+2026-10-22,S4,2,R004,PE_3-1particula,complementaria,pe_1particula_3x2mm,1760.4,1116.115,0.195,63.4,PE probable,si,si,,una_particula_2026-10-22.txt
+2026-10-22,S4,2,R005,PE_4-1mmx1mm,complementaria,pe_1particula_1x1mm,1760.4,1797.336,0.230,102.1,sin partículas,no,si,,una_particula_2026-10-22.txt
