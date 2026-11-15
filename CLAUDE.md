@@ -88,7 +88,8 @@ exacta de concentración, diferenciación entre polímeros, certificación.
   y 1000 con LED encendido, a 1000 Hz.
 - **Salida:** filas CSV de 19 columnas; mensajes que empiezan con `#`
   (`#ERROR`, `#MON`) para que el análisis los ignore (`comment="#"`).
-- **WiFi (0.2.1, opcional):** `WIFI_ENABLED = False` hasta validarlo en el hardware. Con True,
+- **WiFi (0.2.1):** validado en el hardware el 14-nov (ΔV −0.10 %; `evidencias/wifi_2026-11-14.txt`),
+  `WIFI_ENABLED = True`. Con False el firmware queda como en la campaña. Con True,
   la Pico crea la red `Detector-PE` (clave en `firmware/secrets.py`, no versionado) y sirve la
   página en `http://192.168.4.1`. El servidor solo recibe turno donde ya se revisaba `STOP`
   (en espera y entre repeticiones), nunca dentro de un bloque. La página manda los mismos
@@ -133,4 +134,6 @@ exacta de concentración, diferenciación entre polímeros, certificación.
    σ muy alto) también en `MONITOR`; revisar el criterio `RUIDO_ALTO`, que no
    tiene sentido cuando el PE bloquea casi toda la luz.
 4. Actualizar `README.md` con el estado real.
-5. ~~Opcional: `io_wifi.py`, arranque automático en la Pico.~~ Hecho en 0.2.1 (5-nov); falta la validación en el hardware.
+5. ~~Opcional: `io_wifi.py`, arranque automático en la Pico.~~ Hecho en 0.2.1 (5-nov) y validado en el hardware (14-nov).
+6. Idea (no urgente): con el WiFi apagado, poner el regulador de la Pico en modo PWM para tener el
+   mismo ruido bajo que se vio con el WiFi encendido (`sigma_light` ~2.3 contra ~18).

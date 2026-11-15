@@ -180,10 +180,11 @@ QUALITY_ERROR_PREFIX = "ERROR"  # se usa como "ERROR:motivo"
 # se sube a GitHub (ver .gitignore). Copiar secrets_ejemplo.py y cambiarla.
 # Plan y contrato de la página: docs/plan_wifi.md.
 
-WIFI_ENABLED = False
-"""Switch global del WiFi. Con False el firmware se comporta exactamente
-como en la campaña (solo USB). Se deja en False hasta hacer la prueba de
-validación (docs/plan_wifi.md, sección 7)."""
+WIFI_ENABLED = True
+"""Switch global del WiFi. Validado en el hardware el 14-nov-2026
+(evidencias/wifi_2026-11-14.txt): con el WiFi encendido ΔV cambió −0.10 %.
+Con False el firmware se comporta exactamente como en la campaña (solo USB).
+Si falta firmware/secrets.py, avisa con #ERROR y sigue sin WiFi."""
 
 WIFI_AP_SSID = "Detector-PE"
 """Nombre de la red WiFi que crea la Pico."""

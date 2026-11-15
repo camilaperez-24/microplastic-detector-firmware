@@ -206,15 +206,16 @@ celular, sin computador ni internet. La página manda los mismos comandos de la 
 muestra el avance, ΔV en vivo, el veredicto de cada llenado (*T*<sub>rel</sub> frente a la
 referencia, umbral de 80 %) y la tabla de la sesión. Plan y detalles: [`docs/plan_wifi.md`](docs/plan_wifi.md).
 
-> **Estado:** probado en el PC con la Pico simulada; **falta la prueba de validación en el
-> hardware** (que el WiFi no cambie la señal). Mientras tanto `WIFI_ENABLED = False` y el
-> firmware se comporta exactamente como en la campaña.
+> **Estado: validado en el hardware el 14-nov-2026** (`evidencias/wifi_2026-11-14.txt`).
+> Con el WiFi encendido ΔV cambió −0,10 % frente al WiFi apagado (criterio: menos de 1 %), y
+> el ruido por lectura bajó unas 8 veces. La referencia, la clasificación y la descarga del CSV
+> funcionaron desde el celular con la Pico arrancando sola. `WIFI_ENABLED = True`.
 
 **Una sola vez, con el computador:**
 
 1. Copiar `firmware/secrets_ejemplo.py` como `firmware/secrets.py` y poner una contraseña
    de al menos 8 caracteres.
-2. En `firmware/config.py`, `WIFI_ENABLED = True`.
+2. Revisar que en `firmware/config.py` diga `WIFI_ENABLED = True` (así viene desde el 14-nov).
 3. En Thonny, subir la carpeta `firmware/` a la raíz de la Pico (incluye `web/index.html` y
    `secrets.py`) y subir `pico/main.py` como `/main.py` (arranque automático).
 

@@ -1,9 +1,17 @@
 # Plan: ver y manejar las mediciones desde el celular (WiFi del Pico 2 W)
 
-Propuesto y aprobado el 5-nov-2026. **Implementado en el firmware 0.2.1** el mismo día.
-Se probó en el PC con el firmware real y la Pico simulada: referencia, PE, limpia, STOP,
-monitor y descarga del CSV. **Falta la prueba de validación en el hardware** (sección 7). Hasta
-entonces `WIFI_ENABLED = False` y el firmware se comporta exactamente como en la campaña.
+Propuesto y aprobado el 5-nov-2026. **Implementado en el firmware 0.2.1** el mismo día y
+**validado en el hardware el 14-nov-2026** con el prototipo final (`evidencias/wifi_2026-11-14.txt`):
+
+- A contra B (mismo llenado, MEASURE con calentamiento): ΔV −0,10 % con el WiFi encendido. Cumple
+  el criterio de menos de 1 %. Se usó MEASURE en vez de `MONITOR 20` porque al reiniciar la Pico
+  el LED se enfría y el MONITOR no tiene calentamiento.
+- Con el WiFi encendido, `sigma_light` bajó de ~18 a ~2,3 cuentas. Lo más probable es que el
+  regulador de 3,3 V de la Pico salga del modo de ahorro (que mete rizado) cuando el chip de
+  WiFi consume más.
+- C: con la Pico arrancando sola (sin Thonny), la referencia (BASELINE), un PE (77,5 %,
+  *PE probable*) y la descarga del CSV funcionaron desde el celular.
+- Desde entonces `WIFI_ENABLED = True`.
 
 ## 1. Qué se quiere
 

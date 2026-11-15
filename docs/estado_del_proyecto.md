@@ -1,6 +1,6 @@
 # Estado del proyecto — resultados, decisiones y pendientes
 
-Actualizado: 5-nov-2026. Agregar una entrada nueva cada vez que haya una prueba o decisión importante.
+Actualizado: 14-nov-2026. Agregar una entrada nueva cada vez que haya una prueba o decisión importante.
 
 ## Cronología
 
@@ -21,6 +21,7 @@ Actualizado: 5-nov-2026. Agregar una entrada nueva cada vez que haya una prueba 
 | 05-nov | Firmware 0.2.1: WiFi propio y página web para medir desde el celular (`session.py`, `io_wifi.py`, `web/index.html`, arranque automático). 140 tests | Probado en el PC con la Pico simulada: referencia, PE (30 %, *PE probable*), limpia (97 %), STOP, monitor y descarga del CSV. **Falta validarlo en el hardware**; `WIFI_ENABLED = False` hasta entonces | `docs/plan_wifi.md` |
 | 12/13-nov | Prototipo final en baquelita: la Pico se colgaba y el LED quedó con lógica invertida y señal muy ruidosa (`sigma_light` ~1000) | Error de cableado en el bloque del LED; se volvió a soldar copiando la protoboard. `adq.py` lee la lógica del LED de `config.LED_ACTIVE_LOW` (False = como siempre) | — |
 | 14-nov | Verificación del prototipo final: referencia + 2 limpias + 3 PE (chip 2) | Variación entre repeticiones 0.03 %. Limpias 100.7 / 100.4 %; PE 56.7 / 20.2 / 46.8 %: **5 de 5**. `limpia_final1` sin salida guardada (no entra). Cierre −3.9 % | `evidencias/prototipo_final_2026-11-14.txt` |
+| 14-nov | **Validación del WiFi** con el prototipo final | A (WiFi apagado) 1806.50 vs B (encendido, celular conectado) 1804.74: **−0.10 %** (criterio < 1 %). Con WiFi, `sigma_light` bajó de ~18 a ~2.3. C desde el celular, con arranque automático: referencia 1803.6, pe_1 77.5 % → *PE probable*; CSV descargado. `WIFI_ENABLED = True` | `evidencias/wifi_2026-11-14.txt` |
 | 18-oct (tarde) | Campaña con el mismo chip: 3 limpias + 4 PE (referencia 2179) | Limpias 2235 / 2226 / 2259; PE 482 / 600 / 1235; pe_7 (581) **descartado**: el chip se filtró durante la medición. Fin del chip 1 (cedió el pegamento) | `evidencias/campana_2026-10-18_tarde.txt` |
 
 ## Caracterización del instrumento
@@ -36,6 +37,7 @@ Actualizado: 5-nov-2026. Agregar una entrada nueva cada vez que haya una prueba 
 | Margen hasta saturar (18-oct) | `mu_light` ≈ 2243 con chip y agua, unas 800 cuentas por debajo del umbral de 3050 |
 | Saturación del OPT101 a 3.3 V | ≈ 2.52 V ≈ 3128 cuentas |
 | R_LED | 470 Ω → I_LED ≈ 4.3 mA calculada (V_F ≈ 1.2 V, V_CE(sat) ≈ 0.1 V); I_B ≈ 2.6 mA |
+| Ruido por lectura con el WiFi encendido (14-nov) | `sigma_light` ≈ 2.3 cuentas (≈ 0.13 %), frente a ≈ 18 con el WiFi apagado. Probable causa: el regulador de 3.3 V de la Pico sale del modo de ahorro y deja de meter rizado |
 
 ## Las tres escalas de variación (hallazgo central)
 
@@ -267,11 +269,13 @@ Referencia 1760.4 (umbral 1408); cierre 1774.1 (+0.78 %).
    lleve las partículas a la zona del sensor sin ubicarlas a mano). `MONITOR` de referencia
    con las L + 3 limpias + 3 PE alternados, sin ubicar el PE a mano, con IDs `L_limpia_xx` y
    `L_pe_xx` (otro prefijo, para no mezclarlos con la campaña). Revisar burbujas en el tope.
-7. Después de la campaña: PCB y piezas estéticas en 3D, y verificación del prototipo final
-   (`MONITOR` + 3 limpias + 3 PE). No desarmar la protoboard hasta verificar la PCB.
+7. ~~Después de la campaña: PCB y piezas estéticas en 3D, y verificación del prototipo final~~
+   **Hecho el 14-nov:** prototipo en baquelita verificado, 5 de 5
+   (`evidencias/prototipo_final_2026-11-14.txt`). Texto original: (`MONITOR` + 3 limpias + 3 PE).
+   No desarmar la protoboard hasta verificar la PCB.
 8. Código: ver la sección 7 de `CLAUDE.md`. El caso de `limpia_03` confirma que hay que
    revisar el criterio `RUIDO_ALTO` en la v0.3.
-9. **Validar el WiFi en el hardware** (`docs/plan_wifi.md`, sección 7, ~30 min): `MONITOR 20`
+9. ~~**Validar el WiFi en el hardware**~~ **Hecho el 14-nov** (`evidencias/wifi_2026-11-14.txt`). Texto original: (`docs/plan_wifi.md`, sección 7, ~30 min): `MONITOR 20`
    con el WiFi apagado y encendido (ΔV debe cambiar menos de 1 %), y una referencia, un llenado
    limpio y uno con PE desde el celular, con la Pico en un cargador. Guardar en
    `evidencias/wifi_<fecha>.txt`. Si no cumple: plan B (apagar la radio durante `MEASURE`).

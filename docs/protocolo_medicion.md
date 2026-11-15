@@ -113,7 +113,7 @@ Agregada el 18-oct-2026.
 
 Agregada el 5-nov-2026. El protocolo es el mismo; solo cambia dónde se escriben los comandos.
 Configuración inicial y detalles: `README.md` (sección "Medir desde el celular") y `docs/plan_wifi.md`.
-**Antes de usarlo para datos de la tesis, hacer la prueba de validación** (`docs/plan_wifi.md`, sección 7).
+Validado en el hardware el 14-nov-2026 (`evidencias/wifi_2026-11-14.txt`): el WiFi no cambia ΔV (−0,10 %).
 
 | Paso del protocolo | En Thonny | En la página (http://192.168.4.1) |
 |---|---|---|
