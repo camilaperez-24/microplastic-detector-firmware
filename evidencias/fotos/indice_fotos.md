@@ -52,13 +52,25 @@ y conviene confirmarla.
 
 ## Prueba de una partícula (22-oct, chip 2) — carpeta `una_particula_2026-10-22/`
 
+Ese día se tomaron fotos de los `MONITOR 20` con agua limpia y de los tres llenados con una
+sola partícula de 3 × 2 mm; el llenado exploratorio de 1 × 1 mm tiene solo la foto de la
+partícula junto a la regla. Las fotos muestran por qué lo decisivo es que la partícula quede
+justo dentro del haz y de frente a él.
+
 | Foto | Llenado | T_rel | Observación |
 |---|---|---|---|
 | PE_1_de_frente.jpg | PE_1-1particula | 27.4 % | Partícula de 3 × 2 mm de frente al haz, en la esquina: detectada |
 | PE_2_de_canto.jpg | PE_2-1particula | 104.2 % | La misma partícula de canto, sobre el borde del canal y corrida de la esquina: no detectada |
 | PE_3_diagonal.jpg | PE_3-1particula | 63.4 % | La misma partícula en diagonal en la esquina: detectada |
 | particula_1x1mm_regla.jpg | PE_4-1mmx1mm | 102.1 % | Partícula de 1 × 1 mm junto a una regla (no detectada) |
-| chip_regla_1.jpg, chip_regla_2.jpg | — | — | Chip 2 junto a una regla, para las dimensiones |
+| monitor_agua_limpia.jpg | `MONITOR 20` | — | Chip 2 con agua limpia, sin partículas |
+| chip_regla_1.jpg, chip_regla_2.jpg | — | — | Chip 2 junto a una regla: ≈ 75 × 25 mm; canal ≈ 3 mm de ancho |
+
+## Partículas de PE junto a la regla — `particulas_pe_regla.jpg`
+
+Partículas de PE azul oscuro usadas en las pruebas, junto a una regla. Según Camila, las dos
+partículas de la campaña miden 2 × 1 mm cada una. Recorte para la Tabla 9:
+`resultados/figuras/foto_particulas_pe.jpg`.
 
 Figura para la tesis: `resultados/figuras/una_particula_orientacion.png`.
 

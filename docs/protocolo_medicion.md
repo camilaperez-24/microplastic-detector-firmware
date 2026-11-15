@@ -108,3 +108,23 @@ Agregada el 18-oct-2026.
    en el máximo, la solución definitiva es subir R_LED, no correr el sensor.
 8. Fijar el sensor sin empujarlo, tapar y confirmar con `MONITOR 20`. Marcar la posición
    en el tubo, tomar foto y anotar el ΔV final como referencia.
+
+## 9. Medir desde el celular (firmware 0.2.1, opcional)
+
+Agregada el 5-nov-2026. El protocolo es el mismo; solo cambia dónde se escriben los comandos.
+Configuración inicial y detalles: `README.md` (sección "Medir desde el celular") y `docs/plan_wifi.md`.
+**Antes de usarlo para datos de la tesis, hacer la prueba de validación** (`docs/plan_wifi.md`, sección 7).
+
+| Paso del protocolo | En Thonny | En la página (http://192.168.4.1) |
+|---|---|---|
+| Verificación inicial y cierre (secciones 2 y 7) | `MONITOR 20` | **Monitor 20 s** |
+| Referencia de la sesión | ΔV del `MONITOR` inicial | **Tomar referencia** (`BASELINE` con agua limpia, ID `ref`) |
+| Cada llenado (sección 4, paso 6) | `SET ID=...` y `MEASURE` | Escribir el ID (o tocar la sugerencia) y **Medir este llenado** |
+| Cancelar | `STOP` | **Detener** |
+| Guardar la salida (sección 7, paso 2) | Copiar la Shell | **Descargar CSV de la sesión** (copia también en la Pico, `/datos/`) |
+
+- La página clasifica cada llenado con la regla de la campaña: *T*<sub>rel</sub> = ΔV / ΔV<sub>ref</sub>;
+  menos de 80 % es *PE probable*. Si el firmware marca `SATURADO` o `ERROR`, la página lo muestra
+  como *No válido* (regla de descarte, sección 3).
+- La página se actualiza cada ~2 s mientras se mide (la Pico la atiende entre repeticiones).
+- Si el celular se desconecta, la medición sigue y los datos quedan en la Pico.

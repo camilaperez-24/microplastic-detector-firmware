@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel del detector de PE</title>
+<!--
+  index.html — Página del detector (la sirve la Pico 2 W por WiFi)
+  ================================================================
+  - Se abre en el celular en http://192.168.4.1 (red "Detector-PE").
+  - No usa librerías ni fuentes de internet: en la red de la Pico no hay internet.
+  - Habla con la Pico por: GET /api/estado, POST /api/cmd, GET /api/csv
+    (contrato en docs/plan_wifi.md, sección 4).
+  - Si NO se abre desde una dirección IP (por ejemplo, desde el computador
+    o con ?demo), arranca en modo demostración con datos simulados.
+
+  Autores: Camila Pérez, Diego Rodriguez
+  Proyecto de Grado II — Universidad Santo Tomás — 2026-2
+-->
+<style>
+:root {
+  /* Instrumento de laboratorio: neutros con sesgo azul, un acento tinta,
+     colores de veredicto aparte. Una columna en celular; dos desde 880px. */
+  --bg: #f2f4f7;
+  --surface: #ffffff;
+  --ink: #152030;
+  --muted: #5a6779;
+  --line: #dbe1e8;
+  --accent: #23539f;
+  --accent-ink: #ffffff;
+  --accent-soft: #e4ecf8;
+  --ok: #13755a;   --ok-bg: #def2ea;
+  --pe: #b4540a;   --pe-bg: #fcebd9;
+  --ref: #475569;  --ref-bg: #e6eaf0;
+  --stop: #b42318;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-num: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141b; --surface: #171e27; --ink: #e6ebf2; --muted: #98a4b4; --line: #2a3442;
+    --accent: #7fa8ea; --accent-ink: #0d1520; --accent-soft: #1d2a3d;
+    --ok: #5cc9a4; --ok-bg: #143329; --pe: #f0a35e; --pe-bg: #3a2614;
+    --ref: #aab5c4; --ref-bg: #242d39; --stop: #f07a6e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141b; --surface: #171e27; --ink: #e6ebf2; --muted: #98a4b4; --line: #2a3442;
+  --accent: #7fa8ea; --accent-ink: #0d1520; --accent-soft: #1d2a3d;
+  --ok: #5cc9a4; --ok-bg: #143329; --pe: #f0a35e; --pe-bg: #3a2614;
+  --ref: #aab5c4; --ref-bg: #242d39; --stop: #f07a6e;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+}
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+header.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+header.top h1 { margin: 0; font-size: 18px; letter-spacing: -0.01em; text-wrap: balance; }
+header.top .sub { color: var(--muted); font-size: 13px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.pill.conn-ok { color: var(--ok); background: var(--ok-bg); }
+.pill.conn-off { color: var(--stop); background: var(--pe-bg); }
+.pill.conn-demo { color: var(--accent); background: var(--accent-soft); }
+.pill.v-limpia { color: var(--ok); background: var(--ok-bg); }
+.pill.v-pe { color: var(--pe); background: var(--pe-bg); }
+.pill.v-ref, .pill.v-none { color: var(--ref); background: var(--ref-bg); }
+.pill.v-invalido { color: var(--stop); background: var(--ref-bg); }
+
+.avisos { max-width: 1180px; margin: 0 auto; padding: 0 16px; display: grid; }
+.banner {
+  margin: 12px 0 0; padding: 10px 12px; border-radius: 8px;
+  background: var(--accent-soft); color: var(--ink); font-size: 13.5px;
+}
+.banner.alerta { background: var(--pe-bg); }
+.banner[hidden] { display: none; }
+
+main {
+  display: grid; grid-template-columns: 1fr; gap: 12px;
+  padding: 12px 16px 24px; max-width: 1180px; margin: 0 auto;
+}
+.col { display: grid; gap: 12px; align-content: start; min-width: 0; }
+@media (min-width: 880px) {
+  main { grid-template-columns: minmax(320px, 400px) 1fr; }
+}
+
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px; min-width: 0;
+}
+.card h2 {
+  margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+/* --- Estado --- */
+.estado-fila { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.estado-nombre { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+.estado-paso { color: var(--muted); }
+.barra { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 10px 0 8px; }
+.barra > div { height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
+.estado-detalle { color: var(--muted); font-size: 13.5px; }
+.vivo {
+  display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.vivo div { display: grid; }
+.vivo small { color: var(--muted); font-size: 12px; }
+.vivo b { font-size: 18px; }
+
+/* --- Resultado --- */
+.resultado { display: grid; gap: 6px; }
+.resultado .grande { font-size: 40px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.resultado .grande small { font-size: 15px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.resultado .linea { color: var(--muted); font-size: 13.5px; }
+.resultado.v-pe .grande { color: var(--pe); }
+.resultado.v-limpia .grande { color: var(--ok); }
+.aviso-calidad { color: var(--pe); font-size: 13.5px; font-weight: 600; }
+
+/* --- Controles --- */
+form.controles { display: grid; gap: 10px; }
+label { font-size: 13px; font-weight: 600; }
+.campo-id { display: grid; gap: 6px; }
+input[type="text"] {
+  width: 100%; font: inherit; font-family: var(--font-num); font-size: 16px;
+  padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink);
+}
+.sugerencias { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+.chip {
+  font: inherit; font-family: var(--font-num); font-size: 13px; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer;
+}
+.pista { font-size: 13px; color: var(--pe); min-height: 1em; }
+.botones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+button.btn {
+  font: inherit; font-weight: 600; font-size: 15px; padding: 12px 10px; border-radius: 8px;
+  border: 1px solid var(--accent); background: var(--surface); color: var(--accent); cursor: pointer;
+}
+button.btn.primario { background: var(--accent); color: var(--accent-ink); grid-column: 1 / -1; font-size: 16px; }
+button.btn.detener { border-color: var(--stop); color: var(--stop); }
+button.btn:disabled { opacity: .4; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, a:focus-visible, .chip:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+.mensaje-cmd { font-size: 13.5px; min-height: 1.2em; }
+.mensaje-cmd.error { color: var(--stop); }
+.nota { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+/* --- Gráfica --- */
+.grafica-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.leyenda { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.leyenda i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+svg#grafica { display: block; width: 100%; height: 230px; }
+svg#grafica text { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+
+/* --- Tabla --- */
+.tabla-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; }
+td.d, th.d { text-align: right; }
+tr.nuevo td { background: var(--accent-soft); }
+@media (max-width: 420px) { .col-run { display: none; } }
+.vacio { color: var(--muted); font-size: 13.5px; margin: 0; }
+
+/* --- Mensajes y descarga --- */
+ol.msgs {
+  list-style: none; margin: 0; padding: 10px; border-radius: 8px; background: var(--bg);
+  font-family: var(--font-num); font-size: 12.5px; display: grid; gap: 3px; overflow-x: auto;
+}
+ol.msgs li { white-space: pre; }
+ol.msgs li.err { color: var(--stop); }
+a.descargar {
+  display: block; text-align: center; text-decoration: none; font-weight: 600;
+  padding: 12px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) { .barra > div { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>Detector de PE</h1>
+    <div class="sub">Panel de medición · Pico 2 W · fw <span id="fw" class="num">—</span></div>
+  </div>
+  <span id="conexion" class="pill conn-demo">Conectando…</span>
+</header>
+
+<div class="avisos">
+<div id="banner-demo" class="banner" hidden>
+  <b>Demostración con datos simulados.</b> Los tiempos van 10 veces más rápido y los valores
+  de ejemplo son los de la campaña del 20-oct con el chip 2. Conectada a la Pico, esta misma
+  página muestra los datos reales. Puedes probar los botones.
+</div>
+<div id="banner-sin-conexion" class="banner alerta" hidden>
+  <b>Se perdió la conexión con la Pico.</b> Revisa que el celular siga conectado a la red
+  <b>Detector-PE</b>. La medición sigue en la Pico y los datos quedan guardados; la página
+  se reconecta sola.
+</div>
+</div>
+
+<main>
+  <div class="col">
+    <!-- 1. Estado -->
+    <section class="card" aria-labelledby="t-estado">
+      <h2 id="t-estado">Estado</h2>
+      <div class="estado-fila" aria-live="polite">
+        <span id="estado-nombre" class="estado-nombre">—</span>
+        <span id="estado-paso" class="estado-paso num"></span>
+      </div>
+      <div class="barra" role="progressbar" aria-labelledby="t-estado" aria-valuemin="0" aria-valuemax="100" id="barra"><div id="barra-fill"></div></div>
+      <div id="estado-detalle" class="estado-detalle"></div>
+      <div class="vivo">
+        <div><small>Muestra</small><b id="vivo-id" class="num">—</b></div>
+        <div><small>ΔV ahora (cuentas)</small><b id="vivo-dv" class="num">—</b></div>
+        <div><small>Frente a la referencia</small><b id="vivo-trel" class="num">—</b></div>
+      </div>
+    </section>
+
+    <!-- 2. Último resultado -->
+    <section class="card" aria-labelledby="t-res">
+      <h2 id="t-res">Último llenado</h2>
+      <div id="resultado" class="resultado"></div>
+    </section>
+
+    <!-- 3. Controles -->
+    <section class="card" aria-labelledby="t-ctl">
+      <h2 id="t-ctl">Medir</h2>
+      <form class="controles" id="form-ctl" autocomplete="off">
+        <div class="campo-id">
+          <label for="campo-id">ID de la muestra</label>
+          <input type="text" id="campo-id" name="campo-id" maxlength="32" placeholder="pe_11" spellcheck="false" autocapitalize="off">
+          <div class="sugerencias" id="sugerencias"></div>
+          <div class="pista" id="pista-id"></div>
+        </div>
+        <div class="botones">
+          <button type="button" class="btn primario" id="btn-medir">Medir este llenado</button>
+          <button type="button" class="btn" id="btn-ref">Tomar referencia</button>
+          <button type="button" class="btn" id="btn-monitor">Monitor 20 s</button>
+          <button type="button" class="btn detener" id="btn-stop" style="grid-column: 1 / -1">Detener</button>
+        </div>
+        <div id="mensaje-cmd" class="mensaje-cmd" role="status"></div>
+        <p class="nota">Cada medición son 180 s de calentamiento y 10 repeticiones (unos 3 min 20 s).
+          La referencia se toma con agua limpia y sirve para toda la sesión.</p>
+      </form>
+    </section>
+  </div>
+
+  <div class="col">
+    <!-- 4. Gráfica -->
+    <section class="card" aria-labelledby="t-graf">
+      <div class="grafica-cab">
+        <h2 id="t-graf">ΔV en vivo</h2>
+        <div class="leyenda">
+          <span><i style="background: var(--muted)"></i>Calentamiento (no se guarda)</span>
+          <span><i style="background: var(--accent)"></i>Repeticiones y monitor</span>
+        </div>
+      </div>
+      <svg id="grafica" role="img" aria-label="Gráfica de ΔV de las últimas repeticiones"></svg>
+    </section>
+
+    <!-- 5. Llenados -->
+    <section class="card" aria-labelledby="t-tabla">
+      <h2 id="t-tabla">Llenados de esta sesión</h2>
+      <div class="tabla-wrap" id="tabla"></div>
+    </section>
+
+    <!-- 6. Mensajes y descarga -->
+    <section class="card" aria-labelledby="t-msg">
+      <h2 id="t-msg">Mensajes del firmware</h2>
+      <ol class="msgs" id="msgs"></ol>
+    </section>
+    <a class="descargar" id="descargar" href="/api/csv">Descargar CSV de la sesión</a>
+    <p class="nota" id="nota-csv">El archivo también queda guardado en la Pico, con el mismo formato
+      que la Shell de Thonny.</p>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ============================================================
+// 1. MODO: Pico real o demostración
+// ============================================================
+// En la Pico la página se abre desde una IP (192.168.4.1).
+// Desde cualquier otro lado (archivo, otro servidor) o con ?demo, es demostración.
+const DEMO = /[?&#]demo\b/.test(location.href) ||
+             !/^\d{1,3}(\.\d{1,3}){3}$/.test(location.hostname);
+const SEG_POR_REP = 2.1;          // duración aproximada de una repetición (s)
+const PUNTOS_MIN_GRAFICA = 40;    // ancho mínimo de la gráfica, en puntos
+
+const nf1 = new Intl.NumberFormat("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nf0 = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
+const pct = (x) => nf1.format(x * 100) + " %";
+const $ = (id) => document.getElementById(id);
+
+let estado = null;        // último estado recibido de la Pico (o del simulador)
+let conectado = false;
+let bloqueoHasta = 0;     // tras iniciar algo, los botones esperan a que la Pico lo confirme
+let tempMsg = null;
+
+// ============================================================
+// 2. COMUNICACIÓN CON LA PICO
+// ============================================================
+async function pedirEstadoPico() {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 6000);  // la Pico responde entre repeticiones (~2 s)
+  try {
+    const r = await fetch("/api/estado", { cache: "no-store", signal: ctl.signal });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function enviarPico(cmd) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch("/api/cmd", {
+      method: "POST", body: cmd, signal: ctl.signal,
+      headers: { "Content-Type": "text/plain" },
+    });
+    return await r.json();
+  } catch (e) {
+    return { ok: false, msg: "No llegó a la Pico. Revisa la conexión y vuelve a intentar." };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+const api = {
+  estado: () => (DEMO ? Promise.resolve(sim.estado()) : pedirEstadoPico()),
+  comando: (cmd) => (DEMO ? Promise.resolve(sim.comando(cmd)) : enviarPico(cmd)),
+};
+
+async function ciclo() {
+  try {
+    estado = await api.estado();
+    conectado = true;
+  } catch (e) {
+    conectado = false;
+  }
+  render();
+  setTimeout(ciclo, DEMO ? 250 : 1500);
+}
+
+// ============================================================
+// 3. ACCIONES DE LOS BOTONES
+// ============================================================
+function mostrarMensaje(texto, esError) {
+  const el = $("mensaje-cmd");
+  el.textContent = texto;
+  el.className = "mensaje-cmd" + (esError ? " error" : "");
+  clearTimeout(tempMsg);
+  tempMsg = setTimeout(() => { el.textContent = ""; }, 7000);
+}
+
+async function comando(cmd) {
+  const r = await api.comando(cmd);
+  if (!r.ok) mostrarMensaje(r.msg || "La Pico rechazó el comando.", true);
+  else if (/^(MEASURE|BASELINE|MONITOR)/.test(cmd)) {
+    // La Pico empieza al terminar de responder; el estado nuevo llega en ~2 s.
+    bloqueoHasta = Date.now() + 5000;
+    if (estado) renderControles();
+  } else if (cmd === "STOP") {
+    bloqueoHasta = 0;
+  }
+  return r;
+}
+
+// SET ID (si cambió) y después MEASURE o BASELINE: los mismos comandos de Thonny.
+async function medir(esReferencia) {
+  let id = $("campo-id").value.trim();
+  if (esReferencia) id = "ref";
+  if (!id) {
+    mostrarMensaje("Escribe el ID de la muestra (por ejemplo pe_11) antes de medir.", true);
+    $("campo-id").focus();
+    return;
+  }
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(id)) {
+    mostrarMensaje("El ID solo puede tener letras, números, _ o - (sin espacios ni tildes).", true);
+    $("campo-id").focus();
+    return;
+  }
+  if (!estado || estado.id !== id) {
+    const r = await comando("SET ID=" + id);
+    if (!r.ok) return;
+  }
+  const r = await comando(esReferencia ? "BASELINE" : "MEASURE");
+  if (r.ok) mostrarMensaje(esReferencia ? "Referencia iniciada con agua limpia." : "Medición de " + id + " iniciada.", false);
+}
+
+$("btn-medir").addEventListener("click", () => medir(false));
+$("btn-ref").addEventListener("click", () => medir(true));
+$("btn-monitor").addEventListener("click", async () => {
+  const r = await comando("MONITOR 20");
+  if (r.ok) mostrarMensaje("Monitor de 20 s iniciado.", false);
+});
+$("btn-stop").addEventListener("click", async () => {
+  const r = await comando("STOP");
+  if (r.ok) mostrarMensaje("Se pidió detener. La Pico se detiene al terminar la repetición en curso.", false);
+});
+$("form-ctl").addEventListener("submit", (e) => e.preventDefault());
+$("campo-id").addEventListener("input", () => renderPistaId());
+
+$("descargar").addEventListener("click", (e) => {
+  if (DEMO) {
+    e.preventDefault();
+    mostrarMensaje("En la demostración no hay archivo. Conectada a la Pico, este botón descarga el CSV.", false);
+    return;
+  }
+  // Nombre con la fecha del celular (la Pico no tiene reloj)
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  $("descargar").setAttribute("download",
+    "sesion_" + d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+    "_" + p(d.getHours()) + p(d.getMinutes()) + ".csv");
+});
+
+// ============================================================
+// 4. DIBUJO DE LA PÁGINA
+// ============================================================
+function ocupado() { return !!estado && estado.estado !== "espera"; }
+
+function textoVeredicto(v) {
+  return { limpia: "Agua limpia", pe: "PE probable", ref: "Referencia",
+           invalido: "No válido" }[v] || "Sin referencia";
+}
+
+function minSeg(s) {
+  s = Math.max(0, Math.round(s));
+  const m = Math.floor(s / 60);
+  return m > 0 ? m + " min " + String(s % 60).padStart(2, "0") + " s" : s + " s";
+}
+
+function render() {
+  // Conexión
+  const pill = $("conexion");
+  if (DEMO) { pill.className = "pill conn-demo"; pill.textContent = "Demostración"; }
+  else if (conectado) { pill.className = "pill conn-ok"; pill.textContent = "Conectado a la Pico"; }
+  else { pill.className = "pill conn-off"; pill.textContent = "Sin conexión"; }
+  $("banner-demo").hidden = !DEMO;
+  $("banner-sin-conexion").hidden = DEMO || conectado || !estado;
+  if (!estado) return;
+
+  $("fw").textContent = estado.fw;
+  renderEstado();
+  renderResultado();
+  renderControles();
+  renderGrafica();
+  renderTabla();
+  renderMensajes();
+}
+
+function renderEstado() {
+  const e = estado;
+  let nombre = "En espera", paso = "", detalle = "Listo para medir.", avance = 0, restante = null;
+  if (e.estado === "calentando") {
+    nombre = e.baseline ? "Calentando · referencia" : "Calentando";
+    paso = nf0.format(e.t) + " / " + nf0.format(e.t_total) + " s";
+    detalle = "El LED trabaja igual que al medir para estabilizarse. Estos datos no se guardan.";
+    avance = e.t / e.t_total;
+    restante = (e.t_total - e.t) + e.m * SEG_POR_REP;
+  } else if (e.estado === "midiendo") {
+    nombre = e.baseline ? "Midiendo · referencia" : "Midiendo";
+    paso = "Repetición " + e.rep + " de " + e.m;
+    detalle = "Cada repetición: 1 s con el LED apagado y 1 s encendido, 1000 muestras cada uno.";
+    avance = (e.rep - 1) / e.m;
+    restante = (e.m - e.rep + 1) * SEG_POR_REP;
+  } else if (e.estado === "monitor") {
+    nombre = "Monitor";
+    paso = nf0.format(e.t) + " / " + nf0.format(e.t_total) + " s";
+    detalle = "ΔV en vivo, sin calentamiento y sin guardar filas de datos.";
+    avance = e.t / e.t_total;
+    restante = e.t_total - e.t;
+  }
+  if (restante !== null) detalle += " Faltan unos " + minSeg(DEMO ? restante / 10 : restante) + (DEMO ? " (demo ×10)." : ".");
+  $("estado-nombre").textContent = nombre;
+  $("estado-paso").textContent = paso;
+  $("estado-detalle").textContent = detalle;
+  const pctAvance = Math.max(0, Math.min(1, avance)) * 100;
+  $("barra-fill").style.width = pctAvance + "%";
+  $("barra").setAttribute("aria-valuenow", Math.round(pctAvance));
+
+  $("vivo-id").textContent = e.id || "—";
+  const dv = e.ultimo ? e.ultimo.dV : null;
+  $("vivo-dv").textContent = dv === null ? "—" : nf1.format(dv);
+  $("vivo-trel").textContent = (dv !== null && e.ref) ? pct(dv / e.ref.dV) : "—";
+}
+
+function renderResultado() {
+  const e = estado, cont = $("resultado");
+  const ult = e.llenados.length ? e.llenados[e.llenados.length - 1] : null;
+  if (!ult) {
+    cont.className = "resultado";
+    cont.innerHTML = '<p class="vacio">Todavía no hay llenados medidos en esta sesión.</p>' +
+      (e.ref ? "" : '<p class="vacio">Primero toma una referencia con agua limpia.</p>');
+    return;
+  }
+  const v = ult.veredicto || "none";
+  cont.className = "resultado v-" + v;
+  const grande = (ult.t_rel !== null && v !== "ref" && v !== "invalido")
+    ? pct(ult.t_rel) + " <small>de la referencia</small>"
+    : nf1.format(ult.dV) + " <small>cuentas</small>";
+  let html =
+    '<div><span class="pill v-' + v + '">' + textoVeredicto(ult.veredicto) + "</span></div>" +
+    '<div class="grande num">' + grande + "</div>" +
+    '<div class="linea"><span class="num">' + esc(ult.id) + "</span> · " + ult.run +
+    ' · ΔV <span class="num">' + nf1.format(ult.dV) + "</span> ± " +
+    '<span class="num">' + nf2.format(ult.sem) + "</span> cuentas</div>";
+  if (e.ref) {
+    html += '<div class="linea">Referencia <span class="num">' + nf1.format(e.ref.dV) + "</span> (" + e.ref.run +
+      ") · umbral " + nf0.format(e.umbral * 100) + " %: por debajo es PE probable</div>";
+  } else {
+    html += '<div class="linea">Toma una referencia con agua limpia para clasificar los llenados.</div>';
+  }
+  if (ult.calidad && ult.calidad !== "OK") {
+    html += '<div class="aviso-calidad">Calidad: ' + esc(ult.calidad) +
+      (v === "invalido" ? ". Según el protocolo este llenado se descarta; repítelo." : "") + "</div>";
+  }
+  cont.innerHTML = html;
+}
+
+function siguientes() {
+  const max = { limpia: 0, pe: 0 };
+  const ids = estado.llenados.map((l) => l.id);
+  if (ocupado()) ids.push(estado.id);   // la que se está midiendo ya cuenta
+  for (const id of ids) {
+    const m = /^(limpia|pe)_(\d+)$/i.exec(id);
+    if (m) max[m[1].toLowerCase()] = Math.max(max[m[1].toLowerCase()], parseInt(m[2], 10));
+  }
+  return ["limpia_" + (max.limpia + 1), "pe_" + (max.pe + 1)];
+}
+
+function renderControles() {
+  const busy = ocupado() || Date.now() < bloqueoHasta;
+  $("btn-medir").disabled = busy;
+  $("btn-ref").disabled = busy;
+  $("btn-monitor").disabled = busy;
+  $("btn-stop").disabled = !busy;
+
+  const sug = siguientes();
+  const cont = $("sugerencias");
+  const clave = sug.join(",");
+  if (cont.dataset.clave !== clave) {
+    cont.dataset.clave = clave;
+    cont.innerHTML = "<span>Siguiente:</span>";
+    for (const s of sug) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.textContent = s;
+      b.addEventListener("click", () => { $("campo-id").value = s; renderPistaId(); });
+      cont.appendChild(b);
+    }
+  }
+  renderPistaId();
+}
+
+function renderPistaId() {
+  const id = $("campo-id").value.trim();
+  let pista = "";
+  if (id && !/^[A-Za-z0-9_-]{1,32}$/.test(id)) {
+    pista = "Solo letras, números, _ o - (sin espacios ni tildes).";
+  } else if (id && estado) {
+    const usado = estado.llenados.find((l) => l.id === id);
+    if (usado) pista = "Ese ID ya se usó en " + usado.run + ". Revisa que sea un llenado nuevo.";
+  }
+  $("pista-id").textContent = pista;
+}
+
+function renderTabla() {
+  const ls = estado.llenados;
+  const cont = $("tabla");
+  if (!ls.length) { cont.innerHTML = '<p class="vacio">Sin llenados todavía.</p>'; return; }
+  let html = '<table><thead><tr><th class="col-run">Medición</th><th>ID</th>' +
+    '<th class="d">ΔV</th><th class="d">T<sub>rel</sub></th><th>Resultado</th></tr></thead><tbody>';
+  for (let i = ls.length - 1; i >= 0; i--) {
+    const l = ls[i];
+    const v = l.veredicto || "none";
+    const nuevo = i === ls.length - 1 ? ' class="nuevo"' : "";
+    html += "<tr" + nuevo + '><td class="col-run num">' + l.run + '</td><td class="num">' + esc(l.id) + "</td>" +
+      '<td class="d num">' + nf1.format(l.dV) + "</td>" +
+      '<td class="d num">' + (l.t_rel === null ? "—" : pct(l.t_rel)) + "</td>" +
+      '<td><span class="pill v-' + v + '">' + textoVeredicto(l.veredicto) + "</span>" +
+      (l.calidad !== "OK" ? ' <span class="aviso-calidad">' + esc(l.calidad) + "</span>" : "") + "</td></tr>";
+  }
+  cont.innerHTML = html + "</tbody></table>";
+}
+
+function renderMensajes() {
+  const ol = $("msgs");
+  const lista = estado.msgs.length ? estado.msgs : ["(sin mensajes)"];
+  ol.innerHTML = lista.map((m) => "<li" + (/^ERROR/.test(m) ? ' class="err"' : "") + ">" + esc(m) + "</li>").join("");
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ------------------------------------------------------------
+// Gráfica en SVG (sin librerías)
+// ------------------------------------------------------------
+function renderGrafica() {
+  const svg = $("grafica");
+  const W = svg.clientWidth || 600, H = svg.clientHeight || 230;
+  const pad = { l: 46, r: 14, t: 12, b: 24 };
+  const serie = estado.serie;
+  const ref = estado.ref ? estado.ref.dV : null;
+  const umbralDV = ref ? ref * estado.umbral : null;
+
+  let maxY = 100;
+  for (const p of serie) maxY = Math.max(maxY, p[0]);
+  if (ref) maxY = Math.max(maxY, ref);
+  maxY *= 1.1;
+  const pasos = [100, 200, 250, 500, 1000, 2000];
+  let paso = pasos[pasos.length - 1];
+  for (const s of pasos) { if (maxY / s <= 5) { paso = s; break; } }
+  maxY = Math.ceil(maxY / paso) * paso;
+
+  const n = serie.length, cap = Math.max(n, PUNTOS_MIN_GRAFICA);
+  const x = (i) => pad.l + (cap <= 1 ? 0 : (i / (cap - 1)) * (W - pad.l - pad.r));
+  const y = (v) => pad.t + (1 - v / maxY) * (H - pad.t - pad.b);
+  const css = getComputedStyle(document.documentElement);
+  const col = (name) => css.getPropertyValue(name).trim();
+
+  let s = "";
+  // Zona de PE probable (debajo del umbral)
+  if (umbralDV) {
+    s += '<rect x="' + pad.l + '" y="' + y(umbralDV) + '" width="' + (W - pad.l - pad.r) +
+      '" height="' + (y(0) - y(umbralDV)) + '" fill="' + col("--pe-bg") + '" opacity="0.7"/>';
+    s += '<text x="' + (pad.l + 6) + '" y="' + (y(0) - 6) + '">Zona de PE probable (menos del ' +
+      nf0.format(estado.umbral * 100) + ' %)</text>';
+  }
+  // Rejilla y eje Y
+  for (let v = 0; v <= maxY; v += paso) {
+    s += '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + y(v) + '" y2="' + y(v) +
+      '" stroke="' + col("--line") + '" stroke-width="1"/>';
+    s += '<text x="' + (pad.l - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + nf0.format(v) + "</text>";
+  }
+  // Referencia y umbral
+  if (ref) {
+    s += '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + y(ref) + '" y2="' + y(ref) +
+      '" stroke="' + col("--ref") + '" stroke-dasharray="5 4" stroke-width="1.2"/>';
+    s += '<text x="' + (W - pad.r - 4) + '" y="' + (y(ref) - 5) + '" text-anchor="end">Referencia ' + nf1.format(ref) + "</text>";
+    s += '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + y(umbralDV) + '" y2="' + y(umbralDV) +
+      '" stroke="' + col("--pe") + '" stroke-dasharray="5 4" stroke-width="1.2"/>';
+    s += '<text x="' + (W - pad.r - 4) + '" y="' + (y(umbralDV) - 5) + '" text-anchor="end">Umbral ' +
+      nf0.format(estado.umbral * 100) + " % · " + nf0.format(umbralDV) + "</text>";
+  }
+  if (n > 0) {
+    // Área tenue bajo toda la serie
+    let area = "M" + x(0) + "," + y(0);
+    serie.forEach((p, i) => { area += " L" + x(i) + "," + y(p[0]); });
+    area += " L" + x(n - 1) + "," + y(0) + " Z";
+    s += '<path d="' + area + '" fill="' + col("--accent") + '" opacity="0.08"/>';
+    // Tramos por tipo: calentamiento en gris, repeticiones y monitor en el acento
+    let i = 0;
+    while (i < n) {
+      const tipo = serie[i][1] === "c" ? "c" : "r";
+      let j = i;
+      let d = "M" + x(i) + "," + y(serie[i][0]);
+      while (j + 1 < n && (serie[j + 1][1] === "c" ? "c" : "r") === tipo) { j++; d += " L" + x(j) + "," + y(serie[j][0]); }
+      if (j + 1 < n) d += " L" + x(j + 1) + "," + y(serie[j + 1][0]);  // une con el siguiente tramo
+      s += '<path d="' + d + '" fill="none" stroke="' + col(tipo === "c" ? "--muted" : "--accent") +
+        '" stroke-width="' + (tipo === "c" ? 1.5 : 2.2) + '" stroke-linejoin="round" stroke-linecap="round"/>';
+      i = j + 1;
+    }
+    // Punto final destacado
+    const last = serie[n - 1];
+    const lx = x(n - 1), ly = y(last[0]);
+    s += '<circle cx="' + lx + '" cy="' + ly + '" r="4.5" fill="' + col("--accent") + '" stroke="' + col("--surface") + '" stroke-width="2"/>';
+    const derecha = lx > W - 90;
+    s += '<text x="' + (derecha ? lx - 8 : lx + 8) + '" y="' + (ly - 8) + '" text-anchor="' + (derecha ? "end" : "start") +
+      '" style="fill:' + col("--ink") + ';font-weight:600">' + nf1.format(last[0]) + "</text>";
+  } else {
+    s += '<text x="' + (W / 2) + '" y="' + (H / 2) + '" text-anchor="middle">Aún no hay puntos: inicia un monitor o una medición.</text>';
+  }
+  s += '<text x="' + pad.l + '" y="' + (H - 6) + '">Últimas ' + n + " repeticiones · una cada ~2 s</text>";
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.innerHTML = s;
+}
+window.addEventListener("resize", () => { if (estado) renderGrafica(); });
+
+// ============================================================
+// 5. SIMULADOR (solo en modo demostración)
+// ============================================================
+// Imita el firmware con los tiempos 10 veces más rápidos.
+// Valores de ejemplo: campaña del 20-oct, chip 2 (referencia 2001,7).
+const sim = !DEMO ? null : (() => {
+  const F = 10, TICK = 0.1;                  // 0,1 s real = 1 s simulado
+  const REF0 = 2001.7, UMBRAL = 0.8, M = 10, WARMUP = 180, SERIE_MAX = 120;
+  const ruido = (s) => (Math.random() + Math.random() + Math.random() - 1.5) * s * 1.4;
+  const s = {
+    fw: "0.2.1", id: "pe_10", estado: "calentando", run: "R007", baseline: 0,
+    t: 140, t_total: WARMUP, rep: 0, m: M, ultimo: null, serie: [],
+    ref: { dV: REF0, run: "R001" }, umbral: UMBRAL, llenados: [], msgs: [],
+  };
+  let runN = 7, objetivo = REF0 * 0.205, contenido = objetivo, acum = 0, valores = [], tRep = 0;
+
+  const msg = (m) => { s.msgs.push(m); if (s.msgs.length > 8) s.msgs.shift(); };
+  const punto = (dv, tipo) => {
+    s.serie.push([Math.round(dv * 10) / 10, tipo]);
+    if (s.serie.length > SERIE_MAX) s.serie.shift();
+    const md = 22.4 + ruido(0.3);
+    s.ultimo = { dV: dv, mu_dark: md, mu_light: dv + md, sigma_light: 0.0107 * dv + 4.3 };
+  };
+  const calentado = (t) => 1 - 0.03 * Math.exp(-t / 69);    // deriva con tau ~ 69 s
+  const agregar = (run, id, dv, sem, base) => {
+    const tr = base ? 1 : (s.ref ? dv / s.ref.dV : null);
+    s.llenados.push({ run, id, dV: dv, sem, t_rel: tr, calidad: "OK", baseline: base ? 1 : 0,
+      veredicto: base ? "ref" : (tr === null ? null : (tr < UMBRAL ? "pe" : "limpia")) });
+  };
+
+  // Historia inicial (valores reales del 20-oct)
+  agregar("R001", "ref", REF0, 0.21, true);
+  [["R002", "limpia_8", 0.995], ["R003", "pe_8", 0.267], ["R004", "limpia_9", 0.941],
+   ["R005", "pe_9", 0.550], ["R006", "limpia_10", 0.937]].forEach(([r, id, tr]) =>
+    agregar(r, id, Math.round(REF0 * tr * 10) / 10, 0.15 + Math.random() * 0.1, false));
+  for (let k = 0; k < M; k++) punto(REF0 * 0.937 + ruido(0.7), "r");
+  for (let t = 0; t < 140; t += SEG_POR_REP) punto(objetivo * calentado(t) + ruido(0.8), "c");
+  ["FIN R006 dV=1875.6 sem=0.214 calidad=OK", "OK fw=0.2.1 ID=pe_10 N=1000 FS=1000 M=10 WARMUP=180 SAT=3050",
+   "INICIO R007 ID=pe_10 M=10 baseline=0", "CALENTANDO 180 s (STOP para cancelar)",
+   "CALENTANDO 30/180 s  dV=399.2", "CALENTANDO 60/180 s  dV=405.3", "CALENTANDO 90/180 s  dV=407.7",
+   "CALENTANDO 120/180 s  dV=408.9"].forEach(msg);
+
+  function paso() {
+    if (s.estado === "espera") return;
+    s.t += TICK * F; tRep += TICK * F;
+    if (tRep < SEG_POR_REP) return;
+    tRep -= SEG_POR_REP;
+    if (s.estado === "calentando") {
+      punto(objetivo * calentado(s.t) + ruido(0.8), "c");
+      if (Math.floor(s.t / 30) > Math.floor((s.t - SEG_POR_REP) / 30) && s.t < s.t_total)
+        msg("CALENTANDO " + Math.floor(s.t / 30) * 30 + "/180 s  dV=" + (objetivo * calentado(s.t)).toFixed(1));
+      if (s.t >= s.t_total) { msg("CALENTAMIENTO TERMINADO"); s.estado = "midiendo"; s.rep = 1; valores = []; }
+    } else if (s.estado === "midiendo") {
+      const dv = objetivo + ruido(0.7);
+      punto(dv, "r"); valores.push(dv);
+      if (s.rep >= s.m) {
+        const media = valores.reduce((a, b) => a + b, 0) / valores.length;
+        const sd = Math.sqrt(valores.reduce((a, b) => a + (b - media) ** 2, 0) / (valores.length - 1));
+        const sem = sd / Math.sqrt(valores.length);
+        agregar(s.run, s.id, Math.round(media * 10) / 10, sem, !!s.baseline);
+        if (s.baseline) s.ref = { dV: Math.round(media * 10) / 10, run: s.run };
+        msg("FIN " + s.run + " dV=" + media.toFixed(2) + " sem=" + sem.toFixed(3) + " calidad=OK");
+        s.estado = "espera"; s.rep = 0;
+      } else {
+        s.rep++;
+      }
+    } else if (s.estado === "monitor") {
+      punto(contenido + ruido(2), "m");
+      if (s.t >= s.t_total) { msg("MONITOR TERMINADO"); s.estado = "espera"; }
+    }
+  }
+  setInterval(paso, TICK * 1000);
+
+  function comando(texto) {
+    const partes = texto.trim().split(/\s+/);
+    const cmd = (partes[0] || "").toUpperCase();
+    if (s.estado !== "espera" && cmd !== "STOP") {
+      msg("ERROR midiendo: solo se acepta STOP");
+      return { ok: false, msg: "La Pico está ocupada: mientras mide solo acepta Detener." };
+    }
+    if (cmd === "SET") {
+      const m = /^ID=(.*)$/i.exec(partes[1] || "");
+      if (!m || partes.length > 2 || !/^[A-Za-z0-9_-]{1,32}$/.test(m[1])) {
+        msg("ERROR ID invalido: solo letras, numeros, _ o -, maximo 32 caracteres");
+        return { ok: false, msg: "ID inválido: solo letras, números, _ o -, máximo 32 caracteres." };
+      }
+      s.id = m[1];
+      msg("OK fw=0.2.1 ID=" + s.id + " N=1000 FS=1000 M=10 WARMUP=180 SAT=3050");
+      return { ok: true };
+    }
+    if (cmd === "MEASURE" || cmd === "BASELINE") {
+      runN++; s.run = "R" + String(runN).padStart(3, "0");
+      s.baseline = cmd === "BASELINE" ? 1 : 0;
+      const base = s.ref ? s.ref.dV : REF0;
+      if (s.baseline) objetivo = REF0 * (0.995 + Math.random() * 0.01);
+      else if (/^pe/i.test(s.id)) objetivo = base * (0.13 + Math.random() * 0.44);
+      else objetivo = base * (0.94 + Math.random() * 0.09);
+      contenido = objetivo;
+      s.estado = "calentando"; s.t = 0; s.t_total = WARMUP; s.rep = 0; tRep = 0;
+      msg("INICIO " + s.run + " ID=" + s.id + " M=10 baseline=" + s.baseline);
+      msg("CALENTANDO 180 s (STOP para cancelar)");
+      return { ok: true };
+    }
+    if (cmd === "MONITOR") {
+      s.estado = "monitor"; s.t = 0; s.t_total = parseInt(partes[1] || "60", 10); tRep = 0;
+      msg("MONITOR " + s.t_total + " s (STOP para cancelar)");
+      return { ok: true };
+    }
+    if (cmd === "STOP") {
+      if (s.estado === "espera") { msg("no hay ninguna medicion en curso"); return { ok: true }; }
+      msg("STOP recibido");
+      msg(s.estado === "monitor" ? "MONITOR TERMINADO" : "CANCELADO " + s.run + " (sin SUMMARY)");
+      s.estado = "espera"; s.rep = 0;
+      return { ok: true };
+    }
+    return { ok: false, msg: "Comando desconocido." };
+  }
+
+  return { estado: () => JSON.parse(JSON.stringify(s)), comando };
+})();
+
+ciclo();
+</script>
+</body>
+</html>

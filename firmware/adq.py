@@ -10,6 +10,8 @@ Reglas importantes:
 - NO se prueba con pytest en el PC.
 - NO calcula estadística (eso es stats.py).
 - NO imprime nada (eso es io_serial.py).
+- La lógica del LED (activo en alto o en bajo) sale de config.LED_ACTIVE_LOW:
+  el resto del firmware siempre piensa en "prendido" / "apagado".
 
 Autores: Camila Pérez, Diego Rodriguez
 Proyecto de Grado II — Universidad Santo Tomás — 2026-2
@@ -30,6 +32,17 @@ Por encima de esto, MicroPython no alcanza a mantener tiempos
 exactos entre muestras."""
 
 
+def led_level(on):
+    """Nivel del pin GP15 para prender (on=True) o apagar (on=False) el LED.
+
+    Circuito original (protoboard): GP15 en alto prende el LED → nivel 1.
+    Prototipo nuevo (13-nov): el LED prende con GP15 en bajo → nivel 0.
+    """
+    if config.LED_ACTIVE_LOW:
+        return 0 if on else 1
+    return 1 if on else 0
+
+
 class Acquisition:
     """Adquisición de bloques de muestras y control del LED.
 
@@ -48,7 +61,7 @@ class Acquisition:
         """
         self.adc = ADC(config.PIN_ADC_SIGNAL)
         # El LED arranca apagado por seguridad
-        self.led = Pin(config.PIN_LED_IR, Pin.OUT, value=0)
+        self.led = Pin(config.PIN_LED_IR, Pin.OUT, value=led_level(False))
         self.last_fs_real = 0.0
         self.last_overruns = 0
         self.configure(n_samples, fs_hz)
@@ -85,7 +98,7 @@ class Acquisition:
         settle : bool — si es True, espera config.LED_SETTLE_MS
                         para que la señal del fotodetector se estabilice.
         """
-        self.led.value(1 if on else 0)
+        self.led.value(led_level(on))
         if settle:
             # Esta espera está FUERA del bucle de muestreo, por eso
             # aquí sí se permite usar sleep.
@@ -163,4 +176,4 @@ class Acquisition:
 
     def shutdown(self):
         """Deja el hardware en estado seguro: LED apagado."""
-        self.led.value(0)
+        self.led.value(led_level(False))

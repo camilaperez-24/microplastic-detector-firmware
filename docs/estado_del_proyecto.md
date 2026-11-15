@@ -1,6 +1,6 @@
 # Estado del proyecto — resultados, decisiones y pendientes
 
-Actualizado: 18-oct-2026. Agregar una entrada nueva cada vez que haya una prueba o decisión importante.
+Actualizado: 5-nov-2026. Agregar una entrada nueva cada vez que haya una prueba o decisión importante.
 
 ## Cronología
 
@@ -18,6 +18,9 @@ Actualizado: 18-oct-2026. Agregar una entrada nueva cada vez que haya una prueba
 | 17/18-oct | Reubicación y alineación del OPT101 | En la primera posición nueva el sensor quedó fuera del haz (ΔV ≈ 60 con chip, 44 sin chip). Se alineó con `MONITOR` buscando el máximo de ΔV (sin chip llegó a saturar, ~3130). Posición final fijada: **ΔV ≈ 2221** con agua limpia, σ 1.1 %, sin saturar | `evidencias/alineacion_sensor_2026-10-17.txt` |
 | 18-oct | Piloto con PE repetido (protocolo rev. 2): 6 llenados alternados, 2 partículas por llenado de PE | Limpias 2212 / 2216 / 2120 (CV 2.5 %); PE 841 / 1039 / 592 (−62 % en promedio). **Welch t = 10.2, p = 0.006**. Matriz de confusión 6 de 6 con el umbral de 80 %. Sin burbujas | `evidencias/piloto_pe_2026-10-18.txt` |
 | 20-oct | Campaña con el chip 2: 5 limpias + 5 PE (referencia 2002; cierre +0.23 %) | Limpias 94–101 %; PE 13–55 %; p ≈ 5 × 10⁻⁴; 10 de 10. Dos llenados descartados (chip con fuga). **Campaña completa 11 + 11: p ≈ 2 × 10⁻⁸, 22 de 22** | `evidencias/campana_chip2_2026-10-20.txt` |
+| 05-nov | Firmware 0.2.1: WiFi propio y página web para medir desde el celular (`session.py`, `io_wifi.py`, `web/index.html`, arranque automático). 140 tests | Probado en el PC con la Pico simulada: referencia, PE (30 %, *PE probable*), limpia (97 %), STOP, monitor y descarga del CSV. **Falta validarlo en el hardware**; `WIFI_ENABLED = False` hasta entonces | `docs/plan_wifi.md` |
+| 12/13-nov | Prototipo final en baquelita: la Pico se colgaba y el LED quedó con lógica invertida y señal muy ruidosa (`sigma_light` ~1000) | Error de cableado en el bloque del LED; se volvió a soldar copiando la protoboard. `adq.py` lee la lógica del LED de `config.LED_ACTIVE_LOW` (False = como siempre) | — |
+| 14-nov | Verificación del prototipo final: referencia + 2 limpias + 3 PE (chip 2) | Variación entre repeticiones 0.03 %. Limpias 100.7 / 100.4 %; PE 56.7 / 20.2 / 46.8 %: **5 de 5**. `limpia_final1` sin salida guardada (no entra). Cierre −3.9 % | `evidencias/prototipo_final_2026-11-14.txt` |
 | 18-oct (tarde) | Campaña con el mismo chip: 3 limpias + 4 PE (referencia 2179) | Limpias 2235 / 2226 / 2259; PE 482 / 600 / 1235; pe_7 (581) **descartado**: el chip se filtró durante la medición. Fin del chip 1 (cedió el pegamento) | `evidencias/campana_2026-10-18_tarde.txt` |
 
 ## Caracterización del instrumento
@@ -169,8 +172,8 @@ Referencia 1760.4 (umbral 1408); cierre 1774.1 (+0.78 %).
 - Con una partícula: 2 de 3 detectadas. Cuando se detecta, la caída es del mismo orden que
   con dos partículas (27 % y 63 %, frente a 12.6–56.7 % en la campaña).
 - PE_2 dio lo mismo que agua limpia: lo más probable es que la partícula no estuviera en el
-  haz (la misma partícula dio 27 % en PE_1). PENDIENTE: confirmar con las fotos.
-- La de 1 × 1 mm no se detectó en el único llenado. PENDIENTE: confirmar con la foto si
+  haz (la misma partícula dio 27 % en PE_1). Confirmado con la foto (28-oct): estaba de canto y corrida de la esquina.
+- La de 1 × 1 mm no se detectó en el único llenado. Solo hay foto de esa partícula junto a la regla, no dentro del chip; no se puede confirmar si
   estaba en la zona de medición; si lo estaba, sugiere un límite inferior de tamaño.
 - R003 (primer intento de PE_3) cancelado con `STOP` a los 31 s con dV = 1700.6 (96.6 %):
   la partícula se había movido fuera de la zona, notado en el momento; se reubicó y se repitió.
@@ -186,6 +189,19 @@ Referencia 1760.4 (umbral 1408); cierre 1774.1 (+0.78 %).
 - La referencia es con agua limpia; salió 12 % más baja que el 20-oct (1760 contra 2002)
   por un cambio de la sesión, no por la partícula. No afecta la clasificación (umbral relativo).
 - Evidencia: `evidencias/una_particula_2026-10-22.txt`.
+- Fotos del 22-oct (28-oct): `MONITOR` con agua limpia, PE_1, PE_2, PE_3, partícula de 1 × 1 mm
+  con regla y chip 2 con regla. Lo decisivo es que la partícula quede justo en el haz y de
+  frente: la misma partícula pasó de bloquear el 73 % de la luz a no detectarse.
+- Medidas del chip 2 leídas en las fotos con regla: ≈ 75 × 25 mm (portaobjetos estándar);
+  canal ≈ 3 mm de ancho (2 mm de profundidad, dos capas de ~1 mm).
+- **Partículas de la campaña: las dos miden 2 × 1 mm** (dato de Camila, 28-oct). Foto junto a la
+  regla: `particulas_pe_regla.jpg` (recorte `foto_particulas_pe.jpg` para la Tabla 9).
+- Tabla 9 (28-oct): Camila prefiere no tomar más fotos. Hay 3 listas (agua estéril, cámara de
+  ABS y partículas); las otras celdas quedan sin foto por ahora.
+- Tabla de costos: Camila envía los costos que no son de impresión; el material de impresión
+  de la cámara (gramos de filamento y precio) lo consulta con quien les imprime.
+- Paquete para GitHub (`subir_a_github.zip`, 28-oct): README nuevo con resultados, evidencias,
+  fotos, tabla consolidada, docs y figuras.
 
 ## Decisiones tomadas
 
@@ -211,7 +227,8 @@ Referencia 1760.4 (umbral 1408); cierre 1774.1 (+0.78 %).
 
 ## Muestra de PE del piloto
 
-- 3 partículas: 1 × 2 mm, 3 × 1 mm y 1 × 2 mm, de color **azul oscuro** (elegido por su
+- Campaña (18 y 20-oct): **2 partículas de 2 × 1 mm** cada una. Piloto del 14-oct:
+  3 partículas: 1 × 2 mm, 3 × 1 mm y 1 × 2 mm, de color **azul oscuro** (elegido por su
   mayor absorción). PENDIENTE: origen y transparencia.
 - Las partículas oscuras son un caso favorable; el PE del ambiente suele ser transparente o
   blanco → limitación y trabajo futuro (probar con PE transparente).
@@ -230,7 +247,7 @@ Referencia 1760.4 (umbral 1408); cierre 1774.1 (+0.78 %).
    % de la referencia de cada sesión (decidido antes de medir con el chip 2).
    Antes: curado completo del pegante (24 h o lo que diga el empaque), prueba de fugas
    (10 min lleno sobre papel seco) y, si se puede, un chip de repuesto.
-   PENDIENTE: tamaños de las 2 partículas; cuántos llenados aguantó el chip 1.
+   Tamaños de las 2 partículas: 2 × 1 mm cada una (confirmado el 28-oct).
 2. Pruebas de sensibilidad, en la misma sesión después de la campaña: 1 partícula
    (`pe1_01`–`pe1_03`) y otro color, ideal transparente o blanco (`pecolor_01`–`pecolor_03`,
    2 partículas). Cambiar una sola cosa a la vez.
@@ -254,3 +271,7 @@ Referencia 1760.4 (umbral 1408); cierre 1774.1 (+0.78 %).
    (`MONITOR` + 3 limpias + 3 PE). No desarmar la protoboard hasta verificar la PCB.
 8. Código: ver la sección 7 de `CLAUDE.md`. El caso de `limpia_03` confirma que hay que
    revisar el criterio `RUIDO_ALTO` en la v0.3.
+9. **Validar el WiFi en el hardware** (`docs/plan_wifi.md`, sección 7, ~30 min): `MONITOR 20`
+   con el WiFi apagado y encendido (ΔV debe cambiar menos de 1 %), y una referencia, un llenado
+   limpio y uno con PE desde el celular, con la Pico en un cargador. Guardar en
+   `evidencias/wifi_<fecha>.txt`. Si no cumple: plan B (apagar la radio durante `MEASURE`).

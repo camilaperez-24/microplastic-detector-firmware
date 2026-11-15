@@ -17,10 +17,12 @@ Proyecto de Grado II — Universidad Santo Tomás — 2026-2
 # 1. METADATOS DEL FIRMWARE
 # ============================================================
 
-FW_VERSION = "0.2.0"
+FW_VERSION = "0.2.1"
 """Versión del firmware. Cambiar al liberar una nueva iteración.
 Se emite en cada fila CSV para trazabilidad.
-0.2.0: columna sem_dV, saturación del sensor, calentamiento."""
+0.2.0: columna sem_dV, saturación del sensor, calentamiento.
+0.2.1: WiFi y página web opcionales (el CSV no cambia; la versión
+       sirve para saber qué datos se tomaron con esta versión)."""
 
 
 # ============================================================
@@ -36,6 +38,10 @@ Corresponde a ADC0 (canal 0 del ADC)."""
 PIN_LED_IR = 15
 """GPIO que controla el LED infrarrojo a través del transistor 2N2222.
 En alto = LED ON, en bajo = LED OFF."""
+
+LED_ACTIVE_LOW = False
+"""True si el LED prende con GP15 en bajo. La protoboard y el prototipo final
+(baquelita, verificado el 14-nov) usan False. Lo lee adq.led_level()."""
 
 
 # ============================================================
@@ -167,19 +173,50 @@ QUALITY_ERROR_PREFIX = "ERROR"  # se usa como "ERROR:motivo"
 
 
 # ============================================================
-# 10. WIFI (OPCIONAL)
+# 10. WIFI Y PÁGINA WEB (OPCIONAL)
 # ============================================================
-# Por defecto deshabilitado. Si se activa, las credenciales reales
-# deben vivir en firmware/secrets.py (NO versionado — ver .gitignore).
+# La Pico crea su propia red y sirve una página en http://192.168.4.1.
+# La contraseña de la red NO va aquí: va en firmware/secrets.py, que no
+# se sube a GitHub (ver .gitignore). Copiar secrets_ejemplo.py y cambiarla.
+# Plan y contrato de la página: docs/plan_wifi.md.
 
 WIFI_ENABLED = False
-"""Switch global para WiFi."""
+"""Switch global del WiFi. Con False el firmware se comporta exactamente
+como en la campaña (solo USB). Se deja en False hasta hacer la prueba de
+validación (docs/plan_wifi.md, sección 7)."""
 
-WIFI_ENDPOINT_URL = ""
-"""URL del endpoint HTTP al que se envían las filas resumen."""
+WIFI_AP_SSID = "Detector-PE"
+"""Nombre de la red WiFi que crea la Pico."""
 
-WIFI_TIMEOUT_S = 5
-"""Timeout de las operaciones de red, en segundos."""
+WIFI_AP_PASSWORD_MIN_LEN = 8
+"""Largo mínimo de la contraseña (WPA2 no acepta menos de 8 caracteres)."""
+
+WEB_PORT = 80
+"""Puerto HTTP. Con 80 basta escribir la IP en el navegador."""
+
+WEB_PAGE_PATH = "/firmware/web/index.html"
+"""Ruta de la página dentro de la Pico (se sube junto con firmware/)."""
+
+WEB_CLIENT_TIMEOUT_S = 0.5
+"""Tiempo máximo esperando a que un celular termine de enviar su petición.
+Corto a propósito: mientras tanto la medición espera entre repeticiones."""
+
+WEB_MAX_REQUESTS_PER_POLL = 3
+"""Peticiones que se atienden como máximo en cada turno del servidor."""
+
+WEB_SERIES_POINTS = 120
+"""Puntos de ΔV que guarda la gráfica de la página (uno por repetición)."""
+
+WEB_MAX_MSGS = 8
+"""Mensajes del firmware que muestra la página."""
+
+SESSION_DIR = "/datos"
+"""Carpeta de la Pico donde se guarda una copia de cada sesión
+(sesion_001.csv, sesion_002.csv, ...), con el formato de la Shell de Thonny."""
+
+T_REL_THRESHOLD = 0.80
+"""Umbral de clasificación de la página: T_rel = ΔV / ΔV_referencia.
+Por debajo de 0.80 el llenado se marca "PE probable" (mismo umbral de la campaña)."""
 
 
 # ============================================================

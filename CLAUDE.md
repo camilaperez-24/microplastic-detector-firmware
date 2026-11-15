@@ -54,10 +54,13 @@ exacta de concentración, diferenciación entre polímeros, certificación.
 - **Fallas ya vistas:** cables que se sueltan (señal del OPT101 el 12-oct,
   LED el 13-oct), luz ambiente que entra por los extremos del tubo y sensor
   desalineado al reubicarlo (17-oct; se realineó con `MONITOR`).
+- **Prototipo final (14-nov):** electrónica soldada en baquelita, verificada (5 de 5;
+  `evidencias/prototipo_final_2026-11-14.txt`). La lógica del LED sale de
+  `config.LED_ACTIVE_LOW` (False: GP15 en alto = LED encendido).
 - **Montaje congelado desde el 18-oct** (referencia ΔV ≈ 2221 con agua limpia):
   no mover sensor, LED ni tubo hasta terminar la campaña, salvo daño.
 
-## 4. Firmware v0.2.0 — arquitectura
+## 4. Firmware v0.2.1 — arquitectura
 
 | Archivo | Capa | Dónde corre | Tests |
 |---|---|---|---|
@@ -66,10 +69,13 @@ exacta de concentración, diferenciación entre polímeros, certificación.
 | `firmware/stats.py` | 2 · Welford, sem, ΔV, calidad | PC y Pico | `tests/test_stats.py` |
 | `firmware/record.py` | 3 · Filas CSV y run_id | PC y Pico | `tests/test_record.py` |
 | `firmware/io_serial.py` | 4 · Parser de comandos + E/S USB no bloqueante | Parser: PC y Pico. `SerialIO`: solo Pico | `tests/test_io_serial.py` |
-| `firmware/main.py` | Orquestación: calentamiento, MEASURE, MONITOR, STOP | Solo Pico | No (probado en hardware) |
-| `firmware/io_wifi.py` | WiFi opcional | — | Vacío por ahora |
+| `firmware/main.py` | Orquestación: calentamiento, MEASURE, MONITOR, STOP; `Output` reparte la salida (USB, archivo, página) | Solo Pico | No (probado en hardware; la parte WiFi, solo simulada en PC) |
+| `firmware/session.py` | Estado para la página: progreso, puntos, llenados, T_rel y veredicto | PC y Pico | `tests/test_session.py` |
+| `firmware/io_wifi.py` | 4b · Red WiFi propia (AP) + servidor HTTP no bloqueante + archivo de sesión | Funciones puras: PC y Pico. `SessionLog` y `WebServer`: solo Pico | `tests/test_io_wifi.py` |
+| `firmware/web/index.html` | Página del celular (sin CDN; modo demo fuera de la Pico) | Celular | Revisión con Playwright |
+| `pico/main.py` | Arranque automático (va en `/main.py` de la Pico) | Pico | — |
 
-- **83 tests en verde** con `python -m pytest -v`.
+- **140 tests en verde** con `python -m pytest -v`.
 - **Ejecución en la Pico:** la carpeta `firmware/` se sube a la raíz de la Pico
   con Thonny ("Subir a /"). Se arranca desde Thonny con un archivo local
   (fuera del repo) que contiene:
@@ -82,6 +88,11 @@ exacta de concentración, diferenciación entre polímeros, certificación.
   y 1000 con LED encendido, a 1000 Hz.
 - **Salida:** filas CSV de 19 columnas; mensajes que empiezan con `#`
   (`#ERROR`, `#MON`) para que el análisis los ignore (`comment="#"`).
+- **WiFi (0.2.1, opcional):** `WIFI_ENABLED = False` hasta validarlo en el hardware. Con True,
+  la Pico crea la red `Detector-PE` (clave en `firmware/secrets.py`, no versionado) y sirve la
+  página en `http://192.168.4.1`. El servidor solo recibe turno donde ya se revisaba `STOP`
+  (en espera y entre repeticiones), nunca dentro de un bloque. La página manda los mismos
+  comandos de la consola, validados con `parse_command`. Contrato: `docs/plan_wifi.md`.
 
 ## 5. Reglas no negociables
 
@@ -122,4 +133,4 @@ exacta de concentración, diferenciación entre polímeros, certificación.
    σ muy alto) también en `MONITOR`; revisar el criterio `RUIDO_ALTO`, que no
    tiene sentido cuando el PE bloquea casi toda la luz.
 4. Actualizar `README.md` con el estado real.
-5. Opcional: `io_wifi.py`, arranque automático en la Pico.
+5. ~~Opcional: `io_wifi.py`, arranque automático en la Pico.~~ Hecho en 0.2.1 (5-nov); falta la validación en el hardware.

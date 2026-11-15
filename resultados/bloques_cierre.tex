@@ -3,7 +3,7 @@
 % Complementan bloques_metodologia_resultados.tex (20-oct).
 % - Figura nueva: figuras/una_particula_orientacion.png
 % - Ajustar los niveles de encabezado al documento. Lo marcado PENDIENTE lo
-%   completan ustedes (tabla de costos, tamaños de las partículas de la campaña).
+%   completan ustedes (tabla de costos).
 % - Revisar el tono: la idea es que suene a ustedes.
 % =====================================================================
 
@@ -61,8 +61,9 @@ de detección establecido. En uno de los intentos la partícula se movió fuera 
 de medición antes de terminar el calentamiento; la medición se canceló, se volvió a
 ubicar la partícula y se repitió el llenado.
 
-En conjunto, esta prueba muestra que la detección depende de que la partícula quede
-dentro del haz y de cómo quede orientada, lo cual también explica la mayor dispersión
+En conjunto, esta prueba muestra que lo decisivo es que la partícula quede justo dentro
+del haz y de frente a él: la misma partícula pasó de bloquear el 73\,\% de la luz a no
+detectarse solo por su posición. Esto también explica la mayor dispersión
 observada en los llenados con PE durante la campaña.
 
 
@@ -160,7 +161,8 @@ campo todavía no se ha probado con muestras reales.
     dentro del haz, y la caída depende de su orientación. Con una sola partícula se
     detectaron dos de tres llenados.
   \item \textbf{Tipo y tamaño de partícula.} Las pruebas se hicieron con partículas
-    oscuras de 1 a 3~mm, ubicadas en la zona de medición. Una partícula de 1~mm
+    oscuras de 2~mm $\times$ 1~mm (campaña) y de 3~mm $\times$ 2~mm (prueba de una
+    partícula), ubicadas en la zona de medición. Una partícula de 1~mm
     $\times$ 1~mm no se detectó, y no se probaron partículas transparentes o blancas,
     que son comunes en el ambiente.
   \item \textbf{Selectividad.} El sistema detecta cualquier objeto que atenúe la luz
@@ -187,7 +189,7 @@ campo todavía no se ha probado con muestras reales.
 \begin{enumerate}
   \item Se desarrolló un prototipo optoelectrónico de bajo costo, con un LED infrarrojo de
     940~nm, un fotodetector OPT101 y una Raspberry Pi Pico 2 W, que distingue el agua
-    limpia del agua con partículas de polietileno de 1 a 3~mm ubicadas en la zona de
+    limpia del agua con partículas de polietileno de 2~mm $\times$ 1~mm ubicadas en la zona de
     medición. En 22 llenados con dos chips distintos, la señal de las muestras con PE
     bajó en promedio un 68\,\%, la diferencia fue estadísticamente significativa
     ($p = 1{,}8 \times 10^{-8}$) y todos los llenados quedaron bien clasificados con el
@@ -249,7 +251,7 @@ la luz transmitida con el LED apagado y encendido, y calcula la diferencia para 
 la luz ambiente. Se estableció un protocolo de llenado para controlar las burbujas y un
 criterio de detección definido antes de las pruebas: la muestra se considera con
 partículas si la señal cae por debajo del 80\,\% de la referencia con agua limpia. En una
-campaña de 22 llenados con dos chips, las muestras con dos partículas de PE de 1 a 3~mm
+campaña de 22 llenados con dos chips, las muestras con dos partículas de PE de 2~mm $\times$ 1~mm
 redujeron la señal en promedio un 68\,\%, la diferencia con el agua limpia fue
 estadísticamente significativa ($p = 1{,}8 \times 10^{-8}$) y los 22 llenados se
 clasificaron correctamente. Una prueba complementaria mostró que la detección depende de
@@ -268,8 +270,9 @@ es viable como herramienta de análisis preliminar en condiciones controladas.
 
 \subsubsection{Fabricación del chip}
 
-El chip se fabricó con portaobjetos de vidrio para microscopio, de aproximadamente 1~mm
-de espesor, unidos con un adhesivo epóxico transparente (Pegatanque). Está formado por
+El chip se fabricó con portaobjetos de vidrio para microscopio de 75~mm $\times$ 25~mm
+y aproximadamente 1~mm de espesor, unidos con un adhesivo epóxico transparente
+(Pegatanque). Está formado por
 cuatro capas:
 
 \begin{enumerate}
@@ -282,8 +285,9 @@ cuatro capas:
   \item \textbf{Tapa:} otro portaobjetos completo, sin cortes.
 \end{enumerate}
 
-El canal resultante mide aproximadamente 3~mm de ancho por 2~mm de profundidad, un
-tamaño suficiente para que pasen las partículas de prueba sin taparlo. Entre una capa y
+El chip terminado mide unos 75~mm $\times$ 25~mm, y el canal resultante, aproximadamente
+3~mm de ancho por 2~mm de profundidad, un tamaño suficiente para que pasen las partículas
+de prueba sin taparlo. Entre una capa y
 la siguiente se esperó el tiempo de curado indicado por el fabricante del adhesivo, y la
 plantilla permitió que los chips quedaran lo más parecidos posible entre sí
 (Figura~\ref{fig:chip_regla}).
